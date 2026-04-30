@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skilltree Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #131316;
+    --bg-1: #1a1a1e;
+    --bg-2: #212126;
+    --bg-3: #292930;
+    --bg-4: #34343c;
+    --line-1: #2a2a30;
+    --line-2: #383840;
+    --line-3: #494952;
+    --text-1: #e8e6e1;
+    --text-2: #a8a6a1;
+    --text-3: #76757a;
+    --text-4: #54535a;
+
+    --acc-general: #7d8a78;
+    --acc-civ:     #788494;
+    --acc-crime:   #927878;
+    --acc-faction: #8e8270;
+
+    --acc-points:  #aa9b6e;
+    --acc-danger:  #b87878;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    background: var(--bg-0);
+    color: var(--text-1);
+    font-size: 14px;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea, select {
+    font-family: inherit;
+    color: var(--text-1);
+    background: var(--bg-1);
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+    width: 100%;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--line-3);
+    background: var(--bg-2);
+  }
+  textarea { resize: vertical; min-height: 70px; line-height: 1.5; font-family: inherit; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  .app {
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 290px 1fr 360px;
+  }
+
+  /* LEFT PANEL */
+  .left-panel {
+    background: var(--bg-1);
+    border-right: 1px solid var(--line-1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .brand {
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid var(--line-1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .brand-mark {
+    width: 38px; height: 38px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-3);
+    border: 1px solid var(--line-2);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    color: var(--text-2);
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+  .brand h1 { font-size: 14px; font-weight: 600; }
+  .brand p { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  .cat-tabs {
+    padding: 14px 14px 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .cat-tab {
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    color: var(--text-2);
+    padding: 10px 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    border-radius: var(--radius-sm);
+    transition: all 0.12s ease;
+  }
+  .cat-tab:hover { background: var(--bg-3); color: var(--text-1); }
+  .cat-tab.active {
+    color: var(--text-1);
+    background: var(--bg-3);
+    border-color: var(--cat-color);
+    box-shadow: inset 0 0 0 1px var(--cat-color);
+  }
+  .cat-tab .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: var(--cat-color, var(--text-3));
+    vertical-align: middle;
+  }
+
+  .search {
+    padding: 6px 14px 12px;
+    flex-shrink: 0;
+  }
+  .search label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-bottom: 5px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .spec-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .spec-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .spec-card:hover { background: var(--bg-3); border-color: var(--line-2); }
+  .spec-card.active {
+    background: var(--bg-3);
+    border-color: var(--cat-color);
+  }
+  .spec-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--cat-color);
+    opacity: 0.7;
+  }
+  .spec-card .top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .spec-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+    line-height: 1.25;
+  }
+  .spec-card p { font-size: 11px; color: var(--text-3); line-height: 1.4; }
+  .spec-card .meta {
+    margin-top: 6px;
+    font-size: 10.5px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .spec-card .actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  .spec-card:hover .actions, .spec-card.active .actions { opacity: 1; }
+  .icon-btn-sm {
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--text-2);
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    font-size: 11px;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .icon-btn-sm:hover { background: var(--bg-4); color: var(--text-1); }
+  .icon-btn-sm.danger:hover { color: var(--acc-danger); border-color: #6b3a3a; }
+
+  .add-spec-btn {
+    background: transparent;
+    border: 1px dashed var(--line-2);
+    color: var(--text-3);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.12s ease;
+  }
+  .add-spec-btn:hover {
+    background: var(--bg-2);
+    color: var(--text-1);
+    border-color: var(--cat-color);
+    border-style: solid;
+  }
+
+  /* WORKSPACE */
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-0);
+    min-width: 0;
+  }
+  .toolbar {
+    border-bottom: 1px solid var(--line-1);
+    padding: 12px 18px;
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    background: var(--bg-1);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .active-title { flex: 1; min-width: 200px; }
+  .active-title strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .active-title span {
+    display: block;
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .sim-controls {
+    display: flex;
+    gap: 10px;
+  }
+  .sim-controls label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .sim-controls input {
+    width: 64px;
+    padding: 6px 8px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--acc-points);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .toolbar-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .tool-btn {
+    background: var(--bg-2);
+    color: var(--text-1);
+    border: 1px solid var(--line-2);
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.12s ease;
+  }
+  .tool-btn:hover { background: var(--bg-3); border-color: var(--line-3); }
+  .tool-btn.primary { background: var(--bg-4); border-color: var(--line-3); }
+  .tool-btn.primary:hover { background: var(--line-2); }
+  .icon-btn {
+    background: var(--bg-2);
+    color: var(--text-2);
+    border: 1px solid var(--line-2);
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    transition: all 0.12s ease;
+  }
+  .icon-btn:hover { background: var(--bg-3); color: var(--text-1); }
+  .icon-btn.active {
+    background: var(--bg-4);
+    border-color: var(--acc-points);
+    color: var(--acc-points);
+  }
+  .icon-btn.danger:hover { color: var(--acc-danger); border-color: #6b3a3a; }
+
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg-0);
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  #treeCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+  }
+  #treeCanvas.panning { cursor: grabbing; }
+  #treeCanvas.connecting { cursor: crosshair; }
+
+  .canvas-status, .canvas-zoom-info {
+    position: absolute;
+    bottom: 12px;
+    font-size: 11px;
+    color: var(--text-3);
+    background: rgba(19,19,22,0.85);
+    backdrop-filter: blur(6px);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line-1);
+    pointer-events: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .canvas-status { left: 14px; }
+  .canvas-zoom-info { right: 14px; }
+
+  .empty-canvas {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    text-align: center;
+  }
+  .empty-canvas h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .empty-canvas p { color: var(--text-3); font-size: 12.5px; line-height: 1.6; }
+
+  .perk-node { cursor: grab; }
+  .perk-node.dragging { cursor: grabbing; }
+  .perk-node .perk-shape {
+    fill: var(--bg-2);
+    stroke: var(--line-3);
+    stroke-width: 1.5;
+    transition: fill 0.1s, stroke 0.1s;
+  }
+  .perk-node:hover .perk-shape { fill: var(--bg-3); stroke: var(--text-3); }
+  .perk-node.selected .perk-shape {
+    stroke: var(--acc-points);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 4px rgba(170, 155, 110, 0.5));
+  }
+  .perk-node.connect-source .perk-shape {
+    stroke-dasharray: 4 3;
+    stroke: var(--acc-points);
+  }
+  .perk-label {
+    fill: var(--text-2);
+    font-size: 11px;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 500;
+    text-anchor: middle;
+    pointer-events: none;
+    user-select: none;
+  }
+  .perk-cost-circle { fill: var(--acc-points); pointer-events: none; }
+  .perk-cost-text {
+    fill: var(--bg-0);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+    user-select: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .perk-icon-text {
+    fill: var(--text-2);
+    font-size: 16px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+    user-select: none;
+    font-weight: 600;
+  }
+  .perk-node.dragging .perk-shape { opacity: 0.85; }
+
+  .edge-line {
+    fill: none;
+    stroke: var(--line-3);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+    cursor: pointer;
+    transition: stroke 0.1s;
+  }
+  .edge-line:hover { stroke: var(--text-2); stroke-width: 2; }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    background: var(--bg-1);
+    border-left: 1px solid var(--line-1);
+    overflow-y: auto;
+    padding: 18px;
+    min-width: 0;
+  }
+  .empty-inspector {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    text-align: center;
+  }
+  .empty-inspector h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .empty-inspector p { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+
+  .inspector h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    line-height: 1.3;
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 500;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .section-title {
+    font-size: 10px;
+    color: var(--cat-color, var(--text-3));
+    margin: 18px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 700;
+  }
+  .req-item, .effect-item {
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .req-item .req-name {
+    flex: 1;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .req-item .req-lvl {
+    width: 50px;
+    padding: 4px 6px;
+    font-size: 11px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .effect-item .eff-key, .effect-item .eff-val {
+    padding: 4px 6px;
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .effect-item .eff-key { flex: 1.5; min-width: 0; }
+  .effect-item .eff-val { flex: 1; min-width: 0; }
+  .req-add-row, .effect-add-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .icon-x {
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--text-3);
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .icon-x:hover { color: var(--acc-danger); border-color: #6b3a3a; }
+
+  .danger-zone {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line-1);
+  }
+  .delete-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--acc-danger);
+    padding: 9px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.12s;
+  }
+  .delete-btn:hover { background: rgba(184, 120, 120, 0.08); border-color: #6b3a3a; }
+
+  .modal-bd {
+    position: fixed;
+    inset: 0;
+    background: rgba(8,8,10,0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-bd.show { display: flex; }
+  .modal {
+    background: var(--bg-1);
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h3 { font-size: 16px; margin-bottom: 16px; font-weight: 600; }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 18px;
+  }
+  .json-area {
+    width: 100%;
+    min-height: 280px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-3);
+    border: 1px solid var(--line-3);
+    color: var(--text-1);
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.25s ease;
+    pointer-events: none;
+    z-index: 200;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { border-color: #6b3a3a; color: var(--acc-danger); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--line-3); }
+
+  .help-tip {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="left-panel">
+      <div class="brand">
+        <span class="brand-mark">ST</span>
+        <div>
+          <h1>Skilltree Studio</h1>
+          <p>Edytor drzewek perków</p>
+        </div>
+      </div>
+      <div class="cat-tabs" id="catTabs"></div>
+      <div class="search">
+        <label for="searchInput">Szukaj</label>
+        <input id="searchInput" type="search" placeholder="perk albo drzewo" autocomplete="off">
+      </div>
+      <div class="spec-list" id="specList"></div>
+    </aside>
+
+    <section class="workspace">
+      <header class="toolbar">
+        <div class="active-title">
+          <strong id="activeSpecTitle">—</strong>
+          <span id="activeSpecMeta">Wybierz drzewo z lewego panelu</span>
+        </div>
+        <div class="sim-controls">
+          <label>Level<input id="simLevel" type="number" min="1" value="1"></label>
+          <label>Punkty<input id="simPoints" type="number" min="0" value="0"></label>
+        </div>
+        <div class="toolbar-actions">
+          <button id="connectBtn" class="icon-btn" title="Połącz perki">↔</button>
+          <button id="addPerkBtn" class="tool-btn">+ Perk</button>
+          <button id="duplicateBtn" class="icon-btn" title="Duplikuj">⧉</button>
+          <button id="deleteBtn" class="icon-btn danger" title="Usuń (Delete)">⌫</button>
+          <button id="autoLayoutBtn" class="tool-btn">Auto układ</button>
+          <button id="saveBtn" class="tool-btn primary">Zapisz</button>
+          <button id="exportBtn" class="tool-btn">Eksport</button>
+          <button id="importBtn" class="tool-btn">Import</button>
+        </div>
+      </header>
+      <div class="canvas-wrap" id="canvasWrap">
+        <svg id="treeCanvas">
+          <defs>
+            <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#aa9b6e" flood-opacity="0.4"/>
+            </filter>
+          </defs>
+          <g id="viewport">
+            <g id="edgesLayer"></g>
+            <g id="nodesLayer"></g>
+          </g>
+        </svg>
+        <div class="empty-canvas" id="emptyCanvas">
+          <div>
+            <h3>Brak wybranego drzewa</h3>
+            <p>Kliknij drzewo w panelu po lewej<br>albo dodaj nowe.</p>
+          </div>
+        </div>
+        <div class="canvas-status" id="canvasStatus">Gotowe</div>
+        <div class="canvas-zoom-info" id="zoomInfo">100%</div>
+      </div>
+    </section>
+
+    <aside class="right-panel" id="inspector">
+      <div class="empty-inspector">
+        <div>
+          <h2>Wybierz kafelek</h2>
+          <p>Kliknij perk po środku, żeby<br>edytować jego dane.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="modal-bd" id="specModal">
+    <div class="modal">
+      <h3 id="specModalTitle">Nowe drzewo</h3>
+      <div class="field">
+        <label>Nazwa</label>
+        <input id="specModalName" placeholder="np. Strength">
+      </div>
+      <div class="field">
+        <label>ID (techniczne, bez spacji)</label>
+        <input id="specModalId" class="mono" placeholder="strength">
+      </div>
+      <div class="field">
+        <label>Opis</label>
+        <textarea id="specModalDesc" placeholder="Krótki opis specjalizacji"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Kolor</label>
+          <input id="specModalColor" type="text" value="#7d8a78" class="mono">
+        </div>
+        <div class="field">
+          <label>Btn Color</label>
+          <input id="specModalBtnColor" type="text" value="#7d8a7840" class="mono">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="tool-btn" data-action="close-spec">Anuluj</button>
+        <button class="tool-btn primary" data-action="save-spec">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bd" id="ioModal">
+    <div class="modal">
+      <h3 id="ioModalTitle">Eksport JSON</h3>
+      <div class="field">
+        <label id="ioModalLabel">Skopiuj treść poniżej</label>
+        <textarea id="ioModalArea" class="json-area mono" spellcheck="false"></textarea>
+      </div>
+      <p class="help-tip" id="ioModalHelp">Format zgodny ze strukturą Config.Types.</p>
+      <div class="modal-actions">
+        <button class="tool-btn" data-action="close-io">Zamknij</button>
+        <button class="tool-btn" data-action="copy-io" id="copyIoBtn">Kopiuj</button>
+        <button class="tool-btn primary" data-action="apply-io" id="applyIoBtn" style="display:none;">Wczytaj</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+const CATEGORIES = [
+  { id: 'general', name: 'Ogólne',  typeKey: 'character', accent: '#7d8a78' },
+  { id: 'civ',     name: 'Cywil',   typeKey: 'civ',       accent: '#788494' },
+  { id: 'crime',   name: 'Crime',   typeKey: 'crime',     accent: '#927878' },
+  { id: 'faction', name: 'Frakcje', typeKey: 'trucker',   accent: '#8e8270' },
+];
+
+function uid(prefix){
+  return (prefix || 'id') + '_' + Math.random().toString(36).slice(2, 9);
+}
+
+function defaultLevels(count){
+  const arr = [];
+  for (let i = 1; i <= count; i++) {
+    arr.push({ label: 'Level ' + i, value: 1000 * i, perkPoints: 1 });
+  }
+  return arr;
+}
+
+// ============= KONFIGURACJA =============
+// Jeżeli ustawiłeś token w config.php, wpisz go też tutaj.
+// Pusty string = brak autoryzacji (musi pasować do PHP).
+const APP_CONFIG = {
+  apiUrl: 'api.php',
+  apiToken: '',
+  // Co ile ms odpytywać serwer o zmiany innych użytkowników (0 = wyłączone)
+  pollIntervalMs: 5000,
+  // Debounce po lokalnej zmianie (ms) – odczekuje, łączy zmiany w batch
+  saveDebounceMs: 350,
+};
+
+const CLIENT_ID = (() => {
+  try {
+    let id = localStorage.getItem('skilltree_client_id');
+    if (!id) {
+      id = 'c_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      localStorage.setItem('skilltree_client_id', id);
+    }
+    return id;
+  } catch (e) { return 'c_anon'; }
+})();
+
+// ============= SYNC: kolejka + komunikacja z API =============
+const Sync = (() => {
+  // Kolejka pendingu per "klucz" – ostatni wygrywa (np. wiele zmian
+  // tego samego perka łączymy w jeden POST)
+  const pending = new Map();
+  const inFlight = new Set();
+  let saveTimer = null;
+  let pollTimer = null;
+  let online = true;
+  let suspended = false;          // np. podczas ładowania z serwera
+  let dirtyCounter = 0;           // do wskaźnika "zapisywanie..."
+  let listeners = [];
+
+  function setStatus(state, detail){
+    listeners.forEach(fn => { try { fn(state, detail); } catch(e){} });
+  }
+  function onStatus(fn){ listeners.push(fn); }
+
+  async function call(action, payload, opts){
+    opts = opts || {};
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Client-Id': CLIENT_ID,
+    };
+    if (APP_CONFIG.apiToken) headers['X-API-Token'] = APP_CONFIG.apiToken;
+    const body = Object.assign({ action }, payload || {});
+    let res;
+    try {
+      res = await fetch(APP_CONFIG.apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+    } catch (e) {
+      online = false;
+      setStatus('offline', e.message);
+      throw e;
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(()=>'');
+      let err;
+      try { err = JSON.parse(text); } catch(e) { err = { error: text || res.statusText }; }
+      const e = new Error(err.error || ('HTTP ' + res.status));
+      e.status = res.status;
+      throw e;
+    }
+    online = true;
+    return res.json();
+  }
+
+  // Publiczne wysyłanie pojedynczych operacji
+  function queue(opKey, action, payload){
+    if (suspended) return;
+    pending.set(opKey, { action, payload, ts: Date.now() });
+    dirtyCounter++;
+    setStatus('dirty', dirtyCounter);
+    scheduleFlush();
+  }
+
+  function scheduleFlush(){
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, APP_CONFIG.saveDebounceMs);
+  }
+
+  async function flush(){
+    if (pending.size === 0) return;
+    // Wyciągamy snapshot kolejki – nowe zmiany przyjdą do następnego flusha
+    const batch = Array.from(pending.entries());
+    pending.clear();
+    setStatus('saving', batch.length);
+
+    let failed = [];
+    for (const [key, op] of batch) {
+      if (inFlight.has(key)) {
+        // Już lecimy, dopiszemy do następnej rundy
+        pending.set(key, op);
+        continue;
+      }
+      inFlight.add(key);
+      try {
+        await call(op.action, op.payload);
+      } catch (e) {
+        failed.push({ key, op, error: e.message });
+        // Wracamy do kolejki, spróbujemy ponownie
+        if (!pending.has(key)) pending.set(key, op);
+      } finally {
+        inFlight.delete(key);
+      }
+    }
+
+    dirtyCounter = pending.size;
+    if (failed.length > 0) {
+      setStatus('error', failed[0].error);
+      // Retry za chwilę
+      setTimeout(scheduleFlush, 2000);
+    } else if (pending.size === 0) {
+      setStatus('saved', null);
+    } else {
+      // Coś zostało (np. concurrent edit), wyślij ponownie
+      scheduleFlush();
+    }
+  }
+
+  // Pełne wczytanie ze serwera
+  async function loadAll(){
+    suspended = true;
+    setStatus('loading', null);
+    try {
+      const r = await call('load', {});
+      suspended = false;
+      setStatus('saved', null);
+      return r.data;
+    } catch (e) {
+      suspended = false;
+      setStatus('error', e.message);
+      throw e;
+    }
+  }
+
+  // Polling – periodyczne sprawdzanie zmian innych userów
+  function startPolling(onUpdate){
+    if (!APP_CONFIG.pollIntervalMs) return;
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      // Nie poluj jeżeli jest co wysłać (priorytet ma własny zapis)
+      if (pending.size > 0 || inFlight.size > 0) return;
+      if (document.hidden) return;
+      try {
+        const r = await call('load', {});
+        if (r && r.data) onUpdate(r.data);
+      } catch (e) { /* cicho */ }
+    }, APP_CONFIG.pollIntervalMs);
+  }
+
+  function stopPolling(){
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  // Flush przed zamknięciem karty – synchronicznie przez Beacon API
+  function flushOnUnload(){
+    if (pending.size === 0) return;
+    for (const [key, op] of pending.entries()) {
+      try {
+        const blob = new Blob([JSON.stringify(Object.assign({ action: op.action }, op.payload))], { type: 'application/json' });
+        // sendBeacon nie wspiera headerów, więc token musi iść jako query
+        const url = APP_CONFIG.apiUrl + (APP_CONFIG.apiToken ? '?token=' + encodeURIComponent(APP_CONFIG.apiToken) : '');
+        navigator.sendBeacon(url, blob);
+      } catch (e) {}
+    }
+    pending.clear();
+  }
+
+  return { call, queue, flush, loadAll, startPolling, stopPolling, flushOnUnload, onStatus };
+})();
+
+function defaultData(){
+  return {
+    types: {
+      general: {
+        name: 'Ogólne',
+        accent: '#7d8a78',
+        levels: defaultLevels(20),
+        specializations: {
+          strength: {
+            id: 'strength',
+            label: 'Siła',
+            color: '#7d8a78',
+            btnColor: '#7d8a7840',
+            desc: 'Drzewko siły – cięższe ciosy, większy udźwig.',
+            perks: {
+              p_str_1: { id:'p_str_1', label:'Większa siła z ciosów', image:'increase_strength_from_hits', requiredLevel:1, requiredPerks:{}, levels:[{ desc:'Zwiększa siłę zdobywaną z ciosów o 5%.', strengthModifier:0.05 }], x:200, y:200 },
+              p_str_2: { id:'p_str_2', label:'Większa siła z ciosów II', image:'increase_strength_from_hits_2', requiredLevel:2, requiredPerks:{ p_str_1:1 }, levels:[{ desc:'Zwiększa siłę zdobywaną z ciosów o kolejne 5%.', strengthModifier:0.05 }], x:380, y:200 },
+              p_inv_1: { id:'p_inv_1', label:'Większy udźwig', image:'increase_inventory_weight', requiredLevel:1, requiredPerks:{}, levels:[{ desc:'Zwiększa maksymalny udźwig o 10kg.', inventoryWeightModifier:10 }], x:200, y:340 },
+            },
+          },
+        },
+      },
+      civ:   { name:'Cywil',   accent:'#788494', levels:defaultLevels(15), specializations:{} },
+      crime: { name:'Crime',   accent:'#927878', levels:defaultLevels(15), specializations:{} },
+      faction: {
+        name:'Frakcje', accent:'#8e8270', levels:defaultLevels(5),
+        specializations: {
+          trucker: {
+            id:'trucker', label:'Trucker', color:'#8e8270', btnColor:'#8e827040',
+            desc:'Specjalizacja kierowcy ciężarówki.',
+            perks:{
+              long_distance:  { id:'long_distance',  label:'Long Distance',  image:'long_distance',  requiredLevel:1, requiredPerks:{}, levels:[{ desc:'Otrzymujesz więcej XP z długich tras.' }], x:200, y:200 },
+              on_time:        { id:'on_time',        label:'On Time',        image:'on_time',        requiredLevel:2, requiredPerks:{ long_distance:1 }, levels:[{ desc:'Bonus za dostarczenie na czas.' }], x:380, y:200 },
+              careful_driver: { id:'careful_driver', label:'Careful Driver', image:'careful_driver', requiredLevel:3, requiredPerks:{ on_time:1 }, levels:[{ desc:'Mniejsze zużycie pojazdu.' }], x:560, y:200 },
+              explosive_load: { id:'explosive_load', label:'Explosive Load', image:'explosive_load', requiredLevel:4, requiredPerks:{ careful_driver:1 }, levels:[{ desc:'Możliwość przewozu materiałów wybuchowych.' }], x:740, y:200 },
+            },
+          },
+        },
+      },
+    },
+    version: 1,
+  };
+}
+
+const STATE = {
+  data: defaultData(),
+  ui: {
+    activeCategory: 'general',
+    activeSpecId: 'strength',
+    selectedPerkId: null,
+    connectMode: false,
+    connectFrom: null,
+    pan: { x: 0, y: 0 },
+    zoom: 1,
+    search: '',
+    panning: false,
+    panStart: null,
+    dragging: null,
+    dragStart: null,
+  },
+  modal: { mode: null, editingId: null },
+};
+
+// Cache offline – używany dopóki API nie odpowie / w razie awarii.
+// Prawdziwy stan i tak przyjdzie z serwera w init().
+try {
+  const saved = localStorage.getItem('skilltree_studio_v1');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (parsed && parsed.types) STATE.data = parsed;
+  }
+} catch (e) { /* ignore */ }
+
+const $ = (sel) => document.querySelector(sel);
+
+function getActiveCategory(){
+  return CATEGORIES.find(c => c.id === STATE.ui.activeCategory) || CATEGORIES[0];
+}
+function getActiveType(){
+  return STATE.data.types[STATE.ui.activeCategory];
+}
+function getActiveSpec(){
+  const t = getActiveType();
+  if (!t || !STATE.ui.activeSpecId) return null;
+  return t.specializations[STATE.ui.activeSpecId] || null;
+}
+function getSelectedPerk(){
+  const s = getActiveSpec();
+  if (!s || !STATE.ui.selectedPerkId) return null;
+  return s.perks[STATE.ui.selectedPerkId] || null;
+}
+
+function showToast(msg, type){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type === 'error' ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = 'toast', 2500);
+}
+
+function saveLocal(silent){
+  // Lokalny cache – używany jako fallback offline. Prawdziwy zapis idzie przez Sync.
+  try {
+    localStorage.setItem('skilltree_studio_v1', JSON.stringify(STATE.data));
+  } catch (e) {}
+  if (!silent) showToast('Zapisano');
+}
+
+// ===== Helpery sync per-encja =====
+function syncPerk(catId, specId, perk){
+  Sync.queue('perk:' + catId + ':' + specId + ':' + perk.id, 'save_perk', {
+    categoryId: catId, specId, perk
+  });
+  saveLocal(true);
+}
+function syncMove(catId, specId, perkId, x, y){
+  Sync.queue('move:' + catId + ':' + specId + ':' + perkId, 'move_perk', {
+    categoryId: catId, specId, perkId, x, y
+  });
+  saveLocal(true);
+}
+function syncDeletePerk(catId, specId, perkId){
+  Sync.queue('perk_del:' + catId + ':' + specId + ':' + perkId, 'delete_perk', {
+    categoryId: catId, specId, perkId
+  });
+  saveLocal(true);
+}
+function syncSpec(catId, spec){
+  Sync.queue('spec:' + catId + ':' + spec.id, 'save_spec', {
+    categoryId: catId, spec
+  });
+  saveLocal(true);
+}
+function syncDeleteSpec(catId, specId){
+  Sync.queue('spec_del:' + catId + ':' + specId, 'delete_spec', {
+    categoryId: catId, specId
+  });
+  saveLocal(true);
+}
+// Wysyła dane wybranego perka (pomocniczo, kiedy zmieniło się cokolwiek w nim)
+function syncCurrentPerk(){
+  const cat = getActiveCategory();
+  const spec = getActiveSpec();
+  const perk = getSelectedPerk();
+  if (!cat || !spec || !perk) return;
+  syncPerk(cat.id, spec.id, perk);
+}
+
+function escapeHtml(s){
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function renderCatTabs(){
+  const wrap = $('#catTabs');
+  wrap.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const b = document.createElement('button');
+    b.className = 'cat-tab' + (cat.id === STATE.ui.activeCategory ? ' active' : '');
+    b.style.setProperty('--cat-color', cat.accent);
+    b.innerHTML = '<span class="dot" style="--cat-color:' + cat.accent + '"></span>' + cat.name;
+    b.onclick = () => {
+      STATE.ui.activeCategory = cat.id;
+      const type = STATE.data.types[cat.id];
+      const firstSpec = type ? Object.keys(type.specializations)[0] : null;
+      STATE.ui.activeSpecId = firstSpec || null;
+      STATE.ui.selectedPerkId = null;
+      STATE.ui.pan = { x: 0, y: 0 };
+      STATE.ui.zoom = 1;
+      renderAll();
+    };
+    wrap.appendChild(b);
+  });
+  document.documentElement.style.setProperty('--cat-color', getActiveCategory().accent);
+}
+
+function renderSpecList(){
+  const list = $('#specList');
+  const cat = getActiveCategory();
+  const type = getActiveType();
+  list.innerHTML = '';
+  list.style.setProperty('--cat-color', cat.accent);
+
+  const search = STATE.ui.search.toLowerCase().trim();
+  const specs = Object.values(type.specializations);
+
+  specs.forEach(spec => {
+    if (search) {
+      const matchSpec = (spec.label || '').toLowerCase().includes(search) || (spec.id || '').toLowerCase().includes(search);
+      const matchPerk = Object.values(spec.perks).some(p => (p.label||'').toLowerCase().includes(search) || (p.id||'').toLowerCase().includes(search));
+      if (!matchSpec && !matchPerk) return;
+    }
+    const perkCount = Object.keys(spec.perks).length;
+    const card = document.createElement('div');
+    card.className = 'spec-card' + (STATE.ui.activeSpecId === spec.id ? ' active' : '');
+    card.style.setProperty('--cat-color', cat.accent);
+    card.innerHTML =
+      '<div class="top">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<h3>' + escapeHtml(spec.label || spec.id) + '</h3>' +
+          '<p>' + escapeHtml(spec.desc || '—') + '</p>' +
+        '</div>' +
+        '<div class="actions">' +
+          '<button class="icon-btn-sm" title="Edytuj">✎</button>' +
+          '<button class="icon-btn-sm danger" title="Usuń">⌫</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="meta">' + perkCount + ' perków · ' + escapeHtml(spec.id) + '</div>';
+    card.onclick = (e) => {
+      if (e.target.closest('.actions')) return;
+      STATE.ui.activeSpecId = spec.id;
+      STATE.ui.selectedPerkId = null;
+      STATE.ui.pan = { x: 0, y: 0 };
+      STATE.ui.zoom = 1;
+      renderAll();
+    };
+    const btns = card.querySelectorAll('.actions button');
+    btns[0].onclick = (e) => { e.stopPropagation(); openSpecModal(spec.id); };
+    btns[1].onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Usunąć drzewo "' + (spec.label || spec.id) + '" wraz z wszystkimi perkami?')) {
+        const catId = STATE.ui.activeCategory;
+        const removedId = spec.id;
+        delete type.specializations[spec.id];
+        if (STATE.ui.activeSpecId === spec.id) {
+          STATE.ui.activeSpecId = Object.keys(type.specializations)[0] || null;
+          STATE.ui.selectedPerkId = null;
+        }
+        renderAll();
+        syncDeleteSpec(catId, removedId);
+      }
+    };
+    list.appendChild(card);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-spec-btn';
+  addBtn.style.setProperty('--cat-color', cat.accent);
+  addBtn.textContent = '+ Nowe drzewo';
+  addBtn.onclick = () => openSpecModal(null);
+  list.appendChild(addBtn);
+}
+
+function renderToolbar(){
+  const cat = getActiveCategory();
+  const spec = getActiveSpec();
+  const title = $('#activeSpecTitle');
+  const meta = $('#activeSpecMeta');
+  if (spec) {
+    const perkCount = Object.keys(spec.perks).length;
+    title.textContent = spec.label || spec.id;
+    meta.textContent = cat.name + ' · ' + spec.id + ' · ' + perkCount + ' perków';
+  } else {
+    title.textContent = '—';
+    meta.textContent = 'Wybierz drzewo z lewego panelu';
+  }
+  $('#connectBtn').classList.toggle('active', STATE.ui.connectMode);
+}
+
+function renderCanvas(){
+  const viewport = $('#viewport');
+  const edgesLayer = $('#edgesLayer');
+  const nodesLayer = $('#nodesLayer');
+  const empty = $('#emptyCanvas');
+  const spec = getActiveSpec();
+
+  edgesLayer.innerHTML = '';
+  nodesLayer.innerHTML = '';
+
+  if (!spec) {
+    empty.style.display = 'grid';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const { x, y } = STATE.ui.pan;
+  const z = STATE.ui.zoom;
+  viewport.setAttribute('transform', 'translate(' + x + ',' + y + ') scale(' + z + ')');
+
+  Object.values(spec.perks).forEach(perk => {
+    Object.keys(perk.requiredPerks || {}).forEach(reqId => {
+      const from = spec.perks[reqId];
+      if (!from) return;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const dy = perk.y - from.y;
+      const c1y = from.y + dy * 0.5;
+      const c2y = perk.y - dy * 0.5;
+      path.setAttribute('d', 'M' + from.x + ',' + from.y + ' C' + from.x + ',' + c1y + ' ' + perk.x + ',' + c2y + ' ' + perk.x + ',' + perk.y);
+      path.setAttribute('class', 'edge-line');
+      path.dataset.from = reqId;
+      path.dataset.to = perk.id;
+      path.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('Usunąć zależność "' + (from.label || from.id) + '" → "' + (perk.label || perk.id) + '"?')) {
+          delete perk.requiredPerks[reqId];
+          renderAll();
+          syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, perk);
+        }
+      };
+      edgesLayer.appendChild(path);
+    });
+  });
+
+  Object.values(spec.perks).forEach(perk => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    let cls = 'perk-node';
+    if (STATE.ui.selectedPerkId === perk.id) cls += ' selected';
+    if (STATE.ui.connectFrom === perk.id) cls += ' connect-source';
+    g.setAttribute('class', cls);
+    g.setAttribute('transform', 'translate(' + perk.x + ',' + perk.y + ')');
+    g.dataset.perkId = perk.id;
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('class', 'perk-shape');
+    rect.setAttribute('x', -24);
+    rect.setAttribute('y', -24);
+    rect.setAttribute('width', 48);
+    rect.setAttribute('height', 48);
+    rect.setAttribute('rx', 6);
+    rect.setAttribute('transform', 'rotate(45)');
+    g.appendChild(rect);
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    icon.setAttribute('class', 'perk-icon-text');
+    icon.setAttribute('x', 0);
+    icon.setAttribute('y', 0);
+    icon.textContent = (perk.label || '?').charAt(0).toUpperCase();
+    g.appendChild(icon);
+
+    const costBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    costBg.setAttribute('class', 'perk-cost-circle');
+    costBg.setAttribute('cx', 24);
+    costBg.setAttribute('cy', -24);
+    costBg.setAttribute('r', 9);
+    g.appendChild(costBg);
+
+    const costTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    costTxt.setAttribute('class', 'perk-cost-text');
+    costTxt.setAttribute('x', 24);
+    costTxt.setAttribute('y', -24);
+    costTxt.textContent = perk.requiredLevel || 1;
+    g.appendChild(costTxt);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('class', 'perk-label');
+    label.setAttribute('x', 0);
+    label.setAttribute('y', 60);
+    const lbl = perk.label || perk.id;
+    label.textContent = lbl.length > 22 ? lbl.slice(0, 20) + '…' : lbl;
+    g.appendChild(label);
+
+    g.addEventListener('mousedown', (e) => onPerkMouseDown(e, perk.id));
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (STATE.ui.dragStart && STATE.ui.dragStart.moved) return;
+      onPerkClick(perk.id);
+    });
+
+    nodesLayer.appendChild(g);
+  });
+
+  $('#zoomInfo').textContent = Math.round(STATE.ui.zoom * 100) + '%';
+}
+
+function renderEdgesOnly(){
+  const edgesLayer = $('#edgesLayer');
+  const spec = getActiveSpec();
+  edgesLayer.innerHTML = '';
+  if (!spec) return;
+  Object.values(spec.perks).forEach(perk => {
+    Object.keys(perk.requiredPerks || {}).forEach(reqId => {
+      const from = spec.perks[reqId];
+      if (!from) return;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const dy = perk.y - from.y;
+      const c1y = from.y + dy * 0.5;
+      const c2y = perk.y - dy * 0.5;
+      path.setAttribute('d', 'M' + from.x + ',' + from.y + ' C' + from.x + ',' + c1y + ' ' + perk.x + ',' + c2y + ' ' + perk.x + ',' + perk.y);
+      path.setAttribute('class', 'edge-line');
+      edgesLayer.appendChild(path);
+    });
+  });
+}
+
+function renderInspector(){
+  const inspector = $('#inspector');
+  const perk = getSelectedPerk();
+  const spec = getActiveSpec();
+  const cat = getActiveCategory();
+
+  if (!perk) {
+    inspector.innerHTML =
+      '<div class="empty-inspector"><div>' +
+        '<h2>Wybierz kafelek</h2>' +
+        '<p>Kliknij perk po środku, żeby<br>edytować jego dane.</p>' +
+      '</div></div>';
+    return;
+  }
+
+  inspector.style.setProperty('--cat-color', cat.accent);
+
+  const otherPerks = Object.values(spec.perks).filter(p => p.id !== perk.id);
+  const reqOptions = otherPerks.map(p =>
+    '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.label || p.id) + '</option>'
+  ).join('');
+
+  if (!perk.levels || !perk.levels[0]) perk.levels = [{ desc: '' }];
+  const lvl0 = perk.levels[0];
+  const desc = lvl0.desc || '';
+  const effects = Object.entries(lvl0).filter(([k]) => k !== 'desc');
+
+  let html = '<div class="inspector">';
+  html += '<h2>' + escapeHtml(perk.label || perk.id) + '</h2>';
+  html += '<div class="field"><label>ID</label><input class="mono" data-bind="id" value="' + escapeHtml(perk.id) + '"></div>';
+  html += '<div class="field"><label>Nazwa (label)</label><input data-bind="label" value="' + escapeHtml(perk.label || '') + '"></div>';
+  html += '<div class="field"><label>Opis</label><textarea data-bind="desc" placeholder="Krótki opis działania perka">' + escapeHtml(desc) + '</textarea></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Wymagany level</label><input type="number" min="1" data-bind="requiredLevel" value="' + (perk.requiredLevel || 1) + '"></div>';
+  html += '<div class="field"><label>Ikona (image)</label><input class="mono" data-bind="image" value="' + escapeHtml(perk.image || '') + '"></div>';
+  html += '</div>';
+
+  html += '<div class="section-title">Wymagane perki</div>';
+  html += '<div id="reqList">';
+  Object.entries(perk.requiredPerks || {}).forEach(([reqId, lvl]) => {
+    const req = spec.perks[reqId];
+    const name = req ? (req.label || req.id) : reqId;
+    html += '<div class="req-item">' +
+      '<span class="req-name" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
+      '<input type="number" min="1" class="req-lvl" data-req-lvl="' + escapeHtml(reqId) + '" value="' + lvl + '">' +
+      '<button class="icon-x" data-req-del="' + escapeHtml(reqId) + '" title="Usuń">✕</button>' +
+    '</div>';
+  });
+  html += '</div>';
+  if (otherPerks.length > 0) {
+    html += '<div class="req-add-row">' +
+      '<select id="reqAddSel" style="flex:1;"><option value="">+ Dodaj wymaganie…</option>' + reqOptions + '</select>' +
+      '<input type="number" id="reqAddLvl" value="1" min="1" style="width:60px;">' +
+      '<button class="icon-btn-sm" id="reqAddBtn" title="Dodaj">+</button>' +
+    '</div>';
+  } else {
+    html += '<p class="help-tip">Brak innych perków w tym drzewie.</p>';
+  }
+
+  html += '<div class="section-title">Wartości / efekty</div>';
+  html += '<div id="effectList">';
+  if (effects.length === 0) {
+    html += '<p class="help-tip">Brak efektów. Dodaj poniżej, np. <span class="mono">strengthModifier = 0.05</span>.</p>';
+  }
+  effects.forEach(([k, v]) => {
+    html += '<div class="effect-item">' +
+      '<input class="eff-key mono" data-eff-key-orig="' + escapeHtml(k) + '" value="' + escapeHtml(k) + '">' +
+      '<input class="eff-val mono" data-eff-val="' + escapeHtml(k) + '" value="' + escapeHtml(v) + '">' +
+      '<button class="icon-x" data-eff-del="' + escapeHtml(k) + '" title="Usuń">✕</button>' +
+    '</div>';
+  });
+  html += '</div>';
+  html += '<div class="effect-add-row">' +
+    '<input id="effAddKey" placeholder="np. strengthModifier" class="mono" style="flex:1.5;">' +
+    '<input id="effAddVal" placeholder="0.05" class="mono" style="flex:1;">' +
+    '<button class="icon-btn-sm" id="effAddBtn" title="Dodaj">+</button>' +
+  '</div>';
+
+  html += '<div class="danger-zone"><button class="delete-btn" id="deletePerkBtn">Usuń perk</button></div>';
+  html += '</div>';
+
+  inspector.innerHTML = html;
+
+  inspector.querySelectorAll('[data-bind]').forEach(input => {
+    input.addEventListener('input', () => {
+      const key = input.dataset.bind;
+      const val = input.value;
+      if (key === 'id') return; // commit on blur
+      if (key === 'desc') {
+        if (!perk.levels[0]) perk.levels[0] = {};
+        perk.levels[0].desc = val;
+      } else if (key === 'requiredLevel') {
+        perk.requiredLevel = parseInt(val) || 1;
+        renderCanvas();
+      } else if (key === 'image') {
+        perk.image = val;
+      } else if (key === 'label') {
+        perk.label = val;
+        const h2 = inspector.querySelector('h2');
+        if (h2) h2.textContent = val || perk.id;
+        renderCanvas();
+        renderSpecList();
+        renderToolbar();
+      }
+      syncCurrentPerk();
+    });
+  });
+
+  // ID rename on blur
+  const idInput = inspector.querySelector('[data-bind="id"]');
+  if (idInput) {
+    idInput.addEventListener('change', () => {
+      const newId = idInput.value.trim().replace(/\s+/g, '_').toLowerCase();
+      if (!newId || newId === perk.id) { idInput.value = perk.id; return; }
+      if (spec.perks[newId]) { showToast('ID już istnieje', 'error'); idInput.value = perk.id; return; }
+      const oldId = perk.id;
+      const catId = STATE.ui.activeCategory;
+      const sid = STATE.ui.activeSpecId;
+      // Aktualizuj zależności
+      Object.values(spec.perks).forEach(p => {
+        if (p.requiredPerks && p.requiredPerks[oldId] != null) {
+          p.requiredPerks[newId] = p.requiredPerks[oldId];
+          delete p.requiredPerks[oldId];
+        }
+      });
+      delete spec.perks[oldId];
+      perk.id = newId;
+      spec.perks[newId] = perk;
+      STATE.ui.selectedPerkId = newId;
+      renderAll();
+      // Server: usuń stary, zapisz nowy + wszystkie inne zależne perki
+      syncDeletePerk(catId, sid, oldId);
+      syncPerk(catId, sid, perk);
+      Object.values(spec.perks).forEach(p => {
+        if (p.id !== newId && p.requiredPerks && p.requiredPerks[newId] != null) {
+          syncPerk(catId, sid, p);
+        }
+      });
+    });
+  }
+
+  inspector.querySelectorAll('[data-req-lvl]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const id = inp.dataset.reqLvl;
+      perk.requiredPerks[id] = parseInt(inp.value) || 1;
+      syncCurrentPerk();
+    });
+  });
+  inspector.querySelectorAll('[data-req-del]').forEach(btn => {
+    btn.onclick = () => {
+      delete perk.requiredPerks[btn.dataset.reqDel];
+      renderAll();
+      syncCurrentPerk();
+    };
+  });
+  const reqAddBtn = inspector.querySelector('#reqAddBtn');
+  if (reqAddBtn) {
+    reqAddBtn.onclick = () => {
+      const sel = inspector.querySelector('#reqAddSel').value;
+      const lvl = parseInt(inspector.querySelector('#reqAddLvl').value) || 1;
+      if (!sel) return;
+      if (createsCycle(spec, perk.id, sel)) { showToast('Cykl niedozwolony', 'error'); return; }
+      if (!perk.requiredPerks) perk.requiredPerks = {};
+      perk.requiredPerks[sel] = lvl;
+      renderAll();
+      syncCurrentPerk();
+    };
+  }
+
+  inspector.querySelectorAll('[data-eff-val]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const key = inp.dataset.effVal;
+      const raw = inp.value;
+      const num = parseFloat(raw);
+      perk.levels[0][key] = (isNaN(num) || raw === '' || /[^\d.\-eE+]/.test(raw)) ? raw : num;
+      syncCurrentPerk();
+    });
+  });
+  inspector.querySelectorAll('[data-eff-key-orig]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const oldK = inp.dataset.effKeyOrig;
+      const newK = inp.value.trim();
+      if (!newK || newK === oldK) return;
+      if (perk.levels[0][newK] != null) { showToast('Klucz już istnieje', 'error'); inp.value = oldK; return; }
+      perk.levels[0][newK] = perk.levels[0][oldK];
+      delete perk.levels[0][oldK];
+      renderInspector();
+      syncCurrentPerk();
+    });
+  });
+  inspector.querySelectorAll('[data-eff-del]').forEach(btn => {
+    btn.onclick = () => {
+      delete perk.levels[0][btn.dataset.effDel];
+      renderInspector();
+      syncCurrentPerk();
+    };
+  });
+  const effAddBtn = inspector.querySelector('#effAddBtn');
+  if (effAddBtn) {
+    effAddBtn.onclick = () => {
+      const k = inspector.querySelector('#effAddKey').value.trim();
+      const v = inspector.querySelector('#effAddVal').value;
+      if (!k) { showToast('Podaj nazwę efektu', 'error'); return; }
+      if (perk.levels[0][k] != null) { showToast('Efekt już istnieje', 'error'); return; }
+      const num = parseFloat(v);
+      perk.levels[0][k] = (isNaN(num) || v === '') ? v : num;
+      renderInspector();
+      syncCurrentPerk();
+    };
+  }
+
+  inspector.querySelector('#deletePerkBtn').onclick = () => {
+    if (confirm('Usunąć perk "' + (perk.label || perk.id) + '"?')) deletePerk(perk.id);
+  };
+}
+
+function createsCycle(spec, perkId, candidateReqId){
+  if (perkId === candidateReqId) return true;
+  const visited = new Set();
+  function reach(from){
+    if (from === perkId) return true;
+    if (visited.has(from)) return false;
+    visited.add(from);
+    const p = spec.perks[from];
+    if (!p) return false;
+    return Object.keys(p.requiredPerks || {}).some(reach);
+  }
+  return reach(candidateReqId);
+}
+
+function addPerk(){
+  const spec = getActiveSpec();
+  if (!spec) { showToast('Najpierw wybierz drzewo', 'error'); return; }
+  const id = uid('perk');
+  const wrap = $('#canvasWrap').getBoundingClientRect();
+  const cx = (wrap.width / 2 - STATE.ui.pan.x) / STATE.ui.zoom;
+  const cy = (wrap.height / 2 - STATE.ui.pan.y) / STATE.ui.zoom;
+  const x = Math.round(cx / 20) * 20;
+  const y = Math.round(cy / 20) * 20;
+  const perk = {
+    id, label: 'Nowy perk', image: id,
+    requiredLevel: 1, requiredPerks: {},
+    levels: [{ desc: '' }],
+    x, y,
+  };
+  spec.perks[id] = perk;
+  STATE.ui.selectedPerkId = id;
+  renderAll();
+  syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, perk);
+}
+
+function duplicatePerk(){
+  const perk = getSelectedPerk();
+  const spec = getActiveSpec();
+  if (!perk || !spec) return;
+  const newId = uid('perk');
+  const copy = JSON.parse(JSON.stringify(perk));
+  copy.id = newId;
+  copy.label = (perk.label || 'Perk') + ' (kopia)';
+  copy.x = (perk.x || 0) + 80;
+  copy.y = (perk.y || 0) + 80;
+  spec.perks[newId] = copy;
+  STATE.ui.selectedPerkId = newId;
+  renderAll();
+  syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, copy);
+}
+
+function deletePerk(id){
+  const spec = getActiveSpec();
+  if (!spec) return;
+  const catId = STATE.ui.activeCategory;
+  const specId = STATE.ui.activeSpecId;
+  delete spec.perks[id];
+  // Wyczyść referencje lokalnie i wyślij zaktualizowane perki
+  Object.values(spec.perks).forEach(p => {
+    if (p.requiredPerks && p.requiredPerks[id] != null) {
+      delete p.requiredPerks[id];
+      syncPerk(catId, specId, p);
+    }
+  });
+  if (STATE.ui.selectedPerkId === id) STATE.ui.selectedPerkId = null;
+  renderAll();
+  syncDeletePerk(catId, specId, id);
+}
+
+function autoLayout(){
+  const spec = getActiveSpec();
+  if (!spec) return;
+  const perks = spec.perks;
+  const depth = {};
+  function getDepth(id, visiting){
+    if (depth[id] != null) return depth[id];
+    const v = visiting || new Set();
+    if (v.has(id)) return 0;
+    v.add(id);
+    const p = perks[id];
+    if (!p) return 0;
+    const reqs = Object.keys(p.requiredPerks || {});
+    if (reqs.length === 0) { depth[id] = 0; return 0; }
+    const d = 1 + Math.max.apply(null, reqs.map(r => getDepth(r, v)));
+    depth[id] = d;
+    return d;
+  }
+  Object.keys(perks).forEach(id => getDepth(id));
+  const byDepth = {};
+  Object.entries(depth).forEach(([id, d]) => {
+    if (!byDepth[d]) byDepth[d] = [];
+    byDepth[d].push(id);
+  });
+  const xStep = 160, yStep = 140;
+  const xStart = 200, yStart = 180;
+  Object.keys(byDepth).sort((a, b) => +a - +b).forEach(d => {
+    byDepth[d].forEach((id, i) => {
+      perks[id].x = xStart + i * xStep;
+      perks[id].y = yStart + (+d) * yStep;
+    });
+  });
+  renderAll();
+  // Wyślij wszystkie nowe pozycje
+  const catId = STATE.ui.activeCategory;
+  const sid = STATE.ui.activeSpecId;
+  Object.values(perks).forEach(p => syncMove(catId, sid, p.id, p.x, p.y));
+  showToast('Ułożono automatycznie');
+}
+
+function toggleConnectMode(){
+  STATE.ui.connectMode = !STATE.ui.connectMode;
+  STATE.ui.connectFrom = null;
+  $('#treeCanvas').classList.toggle('connecting', STATE.ui.connectMode);
+  renderToolbar();
+  renderCanvas();
+  if (STATE.ui.connectMode) showToast('Tryb łączenia: kliknij "rodzica", potem "dziecko"');
+}
+
+function onPerkClick(perkId){
+  if (STATE.ui.connectMode) {
+    if (!STATE.ui.connectFrom) {
+      STATE.ui.connectFrom = perkId;
+      renderCanvas();
+      showToast('Wybierz "dziecko"');
+    } else if (STATE.ui.connectFrom === perkId) {
+      STATE.ui.connectFrom = null;
+      renderCanvas();
+    } else {
+      const spec = getActiveSpec();
+      const fromId = STATE.ui.connectFrom;
+      const toPerk = spec.perks[perkId];
+      if (createsCycle(spec, perkId, fromId)) {
+        showToast('Cykl niedozwolony', 'error');
+      } else {
+        if (!toPerk.requiredPerks) toPerk.requiredPerks = {};
+        toPerk.requiredPerks[fromId] = 1;
+        showToast('Połączono');
+        syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, toPerk);
+      }
+      STATE.ui.connectFrom = null;
+      renderAll();
+    }
+    return;
+  }
+  STATE.ui.selectedPerkId = perkId;
+  renderAll();
+}
+
+function onPerkMouseDown(e, perkId){
+  if (e.button !== 0) return;
+  if (STATE.ui.connectMode) return;
+  const spec = getActiveSpec();
+  const perk = spec.perks[perkId];
+  if (!perk) return;
+  STATE.ui.dragging = perkId;
+  STATE.ui.dragStart = {
+    sx: e.clientX, sy: e.clientY,
+    px: perk.x, py: perk.y,
+    moved: false,
+  };
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function onMouseMove(e){
+  if (STATE.ui.dragging) {
+    const ds = STATE.ui.dragStart;
+    const dx = (e.clientX - ds.sx) / STATE.ui.zoom;
+    const dy = (e.clientY - ds.sy) / STATE.ui.zoom;
+    if (Math.abs(dx) + Math.abs(dy) > 3) ds.moved = true;
+    const spec = getActiveSpec();
+    const perk = spec.perks[STATE.ui.dragging];
+    if (perk) {
+      perk.x = Math.round((ds.px + dx) / 20) * 20;
+      perk.y = Math.round((ds.py + dy) / 20) * 20;
+      const node = $('#nodesLayer').querySelector('[data-perk-id="' + perk.id + '"]');
+      if (node) node.setAttribute('transform', 'translate(' + perk.x + ',' + perk.y + ')');
+      renderEdgesOnly();
+    }
+  } else if (STATE.ui.panning) {
+    const dx = e.clientX - STATE.ui.panStart.sx;
+    const dy = e.clientY - STATE.ui.panStart.sy;
+    STATE.ui.pan.x = STATE.ui.panStart.px + dx;
+    STATE.ui.pan.y = STATE.ui.panStart.py + dy;
+    $('#viewport').setAttribute('transform', 'translate(' + STATE.ui.pan.x + ',' + STATE.ui.pan.y + ') scale(' + STATE.ui.zoom + ')');
+  }
+}
+
+function onMouseUp(){
+  if (STATE.ui.dragging) {
+    if (STATE.ui.dragStart && STATE.ui.dragStart.moved) {
+      const spec = getActiveSpec();
+      const perk = spec ? spec.perks[STATE.ui.dragging] : null;
+      if (perk) syncMove(STATE.ui.activeCategory, STATE.ui.activeSpecId, perk.id, perk.x, perk.y);
+    }
+    setTimeout(() => { STATE.ui.dragStart = null; }, 0);
+    STATE.ui.dragging = null;
+  }
+  if (STATE.ui.panning) {
+    STATE.ui.panning = false;
+    $('#treeCanvas').classList.remove('panning');
+  }
+}
+
+function onCanvasMouseDown(e){
+  if (e.target.closest('.perk-node')) return;
+  if (e.target.closest('.edge-line')) return;
+  if (e.button !== 0 && e.button !== 1) return;
+  STATE.ui.panning = true;
+  STATE.ui.panStart = { sx: e.clientX, sy: e.clientY, px: STATE.ui.pan.x, py: STATE.ui.pan.y };
+  $('#treeCanvas').classList.add('panning');
+  if (e.button === 0 && !STATE.ui.connectMode) {
+    STATE.ui.selectedPerkId = null;
+    renderInspector();
+    renderCanvas();
+  }
+}
+
+function onWheel(e){
+  e.preventDefault();
+  const delta = -Math.sign(e.deltaY) * 0.1;
+  const newZoom = Math.max(0.3, Math.min(2.5, STATE.ui.zoom + delta));
+  const rect = $('#treeCanvas').getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const wx = (mx - STATE.ui.pan.x) / STATE.ui.zoom;
+  const wy = (my - STATE.ui.pan.y) / STATE.ui.zoom;
+  STATE.ui.zoom = newZoom;
+  STATE.ui.pan.x = mx - wx * newZoom;
+  STATE.ui.pan.y = my - wy * newZoom;
+  $('#viewport').setAttribute('transform', 'translate(' + STATE.ui.pan.x + ',' + STATE.ui.pan.y + ') scale(' + STATE.ui.zoom + ')');
+  $('#zoomInfo').textContent = Math.round(STATE.ui.zoom * 100) + '%';
+}
+
+function openSpecModal(specId){
+  STATE.modal.mode = 'spec';
+  STATE.modal.editingId = specId;
+  const type = getActiveType();
+  if (specId && type.specializations[specId]) {
+    const s = type.specializations[specId];
+    $('#specModalTitle').textContent = 'Edytuj drzewo';
+    $('#specModalName').value = s.label || '';
+    $('#specModalId').value = s.id;
+    $('#specModalDesc').value = s.desc || '';
+    $('#specModalColor').value = s.color || getActiveCategory().accent;
+    $('#specModalBtnColor').value = s.btnColor || (getActiveCategory().accent + '40');
+    $('#specModalId').disabled = true;
+  } else {
+    const cat = getActiveCategory();
+    $('#specModalTitle').textContent = 'Nowe drzewo';
+    $('#specModalName').value = '';
+    $('#specModalId').value = '';
+    $('#specModalDesc').value = '';
+    $('#specModalColor').value = cat.accent;
+    $('#specModalBtnColor').value = cat.accent + '40';
+    $('#specModalId').disabled = false;
+  }
+  $('#specModal').classList.add('show');
+  setTimeout(() => $('#specModalName').focus(), 50);
+}
+
+function closeSpecModal(){
+  $('#specModal').classList.remove('show');
+  STATE.modal.mode = null;
+  STATE.modal.editingId = null;
+}
+
+function saveSpecModal(){
+  const name = $('#specModalName').value.trim();
+  let id = $('#specModalId').value.trim().replace(/\s+/g, '_').toLowerCase();
+  const desc = $('#specModalDesc').value.trim();
+  const color = $('#specModalColor').value.trim();
+  const btnColor = $('#specModalBtnColor').value.trim();
+  if (!name) { showToast('Podaj nazwę', 'error'); return; }
+  if (!id) id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const type = getActiveType();
+  if (STATE.modal.editingId) {
+    const s = type.specializations[STATE.modal.editingId];
+    s.label = name; s.desc = desc; s.color = color; s.btnColor = btnColor;
+  } else {
+    if (type.specializations[id]) { showToast('ID już istnieje', 'error'); return; }
+    type.specializations[id] = { id, label: name, color, btnColor, desc, perks: {} };
+    STATE.ui.activeSpecId = id;
+    STATE.ui.selectedPerkId = null;
+  }
+  closeSpecModal();
+  renderAll();
+  syncSpec(STATE.ui.activeCategory, type.specializations[STATE.modal.editingId || id]);
+}
+
+function openExportModal(){
+  $('#ioModalTitle').textContent = 'Eksport JSON';
+  $('#ioModalLabel').textContent = 'Skopiuj treść poniżej';
+  $('#ioModalHelp').textContent = 'Format zgodny ze strukturą Config.Types.';
+  $('#ioModalArea').value = JSON.stringify(STATE.data, null, 2);
+  $('#ioModalArea').readOnly = true;
+  $('#applyIoBtn').style.display = 'none';
+  $('#copyIoBtn').style.display = '';
+  $('#ioModal').classList.add('show');
+}
+
+function openImportModal(){
+  $('#ioModalTitle').textContent = 'Import JSON';
+  $('#ioModalLabel').textContent = 'Wklej JSON poniżej (zastąpi wszystkie dane)';
+  $('#ioModalHelp').textContent = 'Format: { types: { general:{...}, civ:{...}, crime:{...}, faction:{...} } }';
+  $('#ioModalArea').value = '';
+  $('#ioModalArea').readOnly = false;
+  $('#applyIoBtn').style.display = '';
+  $('#copyIoBtn').style.display = 'none';
+  $('#ioModal').classList.add('show');
+  setTimeout(() => $('#ioModalArea').focus(), 50);
+}
+
+function applyImport(){
+  try {
+    const obj = JSON.parse($('#ioModalArea').value);
+    if (!obj || !obj.types) throw new Error('Brak pola "types"');
+    CATEGORIES.forEach(c => {
+      if (!obj.types[c.id]) obj.types[c.id] = { name: c.name, accent: c.accent, levels: defaultLevels(15), specializations: {} };
+      const t = obj.types[c.id];
+      if (!t.specializations) t.specializations = {};
+      Object.values(t.specializations).forEach(spec => {
+        if (!spec.perks) spec.perks = {};
+        Object.values(spec.perks).forEach((p, i) => {
+          if (typeof p.x !== 'number') p.x = 200 + (i % 5) * 160;
+          if (typeof p.y !== 'number') p.y = 200 + Math.floor(i / 5) * 140;
+          if (!p.levels) p.levels = [{ desc: '' }];
+          if (!p.requiredPerks) p.requiredPerks = {};
+        });
+      });
+    });
+    STATE.data = obj;
+    STATE.ui.activeSpecId = Object.keys(obj.types[STATE.ui.activeCategory].specializations)[0] || null;
+    STATE.ui.selectedPerkId = null;
+    closeIoModal();
+    renderAll();
+    saveLocal(true);
+    // Wyślij wszystko na serwer w jednej transakcji
+    Sync.queue('full_import', 'save_full', { data: obj });
+    showToast('Wczytano dane');
+  } catch (e) {
+    showToast('Błąd JSON: ' + e.message, 'error');
+  }
+}
+
+function closeIoModal(){
+  $('#ioModal').classList.remove('show');
+}
+
+function copyExport(){
+  const ta = $('#ioModalArea');
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ta.value).then(() => showToast('Skopiowano do schowka'));
+      ok = true;
+    } else {
+      ok = document.execCommand('copy');
+      if (ok) showToast('Skopiowano do schowka');
+    }
+  } catch (e) {}
+  if (!ok) showToast('Skopiuj ręcznie (Ctrl+C)', 'error');
+}
+
+function renderAll(){
+  renderCatTabs();
+  renderSpecList();
+  renderToolbar();
+  renderCanvas();
+  renderInspector();
+}
+
+function init(){
+  $('#addPerkBtn').onclick = addPerk;
+  $('#duplicateBtn').onclick = duplicatePerk;
+  $('#deleteBtn').onclick = () => {
+    const p = getSelectedPerk();
+    if (p && confirm('Usunąć perk "' + (p.label || p.id) + '"?')) deletePerk(p.id);
+  };
+  $('#autoLayoutBtn').onclick = autoLayout;
+  $('#connectBtn').onclick = toggleConnectMode;
+  $('#saveBtn').onclick = async () => {
+    await Sync.flush();
+    saveLocal(false); // toast "Zapisano"
+  };
+  $('#exportBtn').onclick = openExportModal;
+  $('#importBtn').onclick = openImportModal;
+
+  $('#searchInput').oninput = (e) => {
+    STATE.ui.search = e.target.value;
+    renderSpecList();
+  };
+
+  const canvas = $('#treeCanvas');
+  canvas.addEventListener('mousedown', onCanvasMouseDown);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+
+  document.addEventListener('click', (e) => {
+    const a = e.target.dataset && e.target.dataset.action;
+    if (a === 'close-spec') closeSpecModal();
+    if (a === 'save-spec') saveSpecModal();
+    if (a === 'close-io') closeIoModal();
+    if (a === 'copy-io') copyExport();
+    if (a === 'apply-io') applyImport();
+  });
+  $('#specModal').onclick = (e) => { if (e.target.id === 'specModal') closeSpecModal(); };
+  $('#ioModal').onclick = (e) => { if (e.target.id === 'ioModal') closeIoModal(); };
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      const p = getSelectedPerk();
+      if (p) deletePerk(p.id);
+    } else if (e.key === 'Escape') {
+      if (STATE.ui.connectMode) toggleConnectMode();
+      else if (STATE.ui.selectedPerkId) { STATE.ui.selectedPerkId = null; renderAll(); }
+      else { closeSpecModal(); closeIoModal(); }
+    } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      duplicatePerk();
+    } else if ((e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      Sync.flush().then(() => saveLocal(false));
+    }
+  });
+
+  // ===== Status zapisu w prawym dolnym rogu canvasu =====
+  Sync.onStatus((state, detail) => {
+    const el = $('#canvasStatus');
+    if (!el) return;
+    if (state === 'loading')      el.textContent = 'Wczytywanie…';
+    else if (state === 'saving')  el.textContent = 'Zapisywanie… (' + detail + ')';
+    else if (state === 'dirty')   el.textContent = 'Zmiany w kolejce: ' + detail;
+    else if (state === 'saved')   el.textContent = 'Zapisano ✓';
+    else if (state === 'offline') el.textContent = 'Offline – cache lokalny';
+    else if (state === 'error')   el.textContent = 'Błąd: ' + (detail || '');
+  });
+
+  // ===== Flush przed zamknięciem karty =====
+  window.addEventListener('beforeunload', () => Sync.flushOnUnload());
+  window.addEventListener('pagehide', () => Sync.flushOnUnload());
+
+  // ===== Wczytaj stan z serwera =====
+  renderAll(); // najpierw render z cachu lokalnego, żeby UI nie było puste
+  Sync.loadAll().then(data => {
+    if (data && data.types) {
+      STATE.data = data;
+      // Sprawdź czy aktywny spec dalej istnieje
+      const activeType = STATE.data.types[STATE.ui.activeCategory];
+      if (!activeType || !activeType.specializations[STATE.ui.activeSpecId]) {
+        STATE.ui.activeSpecId = activeType ? Object.keys(activeType.specializations)[0] || null : null;
+        STATE.ui.selectedPerkId = null;
+      }
+      renderAll();
+    }
+    // Włącz polling dopiero po pierwszym sukcesie
+    Sync.startPolling((newData) => {
+      if (!newData || !newData.types) return;
+      // Nie nadpisuj jeżeli user właśnie coś zmienia (otwarty inspector + niezapisane zmiany)
+      // Sync sam dba o priorytet, ale dodatkowo zapisz selekcję
+      const selPerk = STATE.ui.selectedPerkId;
+      const selSpec = STATE.ui.activeSpecId;
+      const selCat  = STATE.ui.activeCategory;
+      STATE.data = newData;
+      // Walidacja zachowania selekcji
+      const t = STATE.data.types[selCat];
+      if (!t || !t.specializations[selSpec]) {
+        STATE.ui.activeSpecId = t ? Object.keys(t.specializations)[0] || null : null;
+        STATE.ui.selectedPerkId = null;
+      } else if (selPerk && !t.specializations[selSpec].perks[selPerk]) {
+        STATE.ui.selectedPerkId = null;
+      }
+      renderAll();
+    });
+  }).catch(e => {
+    showToast('Nie udało się połączyć z serwerem (offline)', 'error');
+    console.error(e);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
