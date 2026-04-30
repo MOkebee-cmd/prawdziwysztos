@@ -494,9 +494,22 @@
     stroke-width: 2;
     filter: drop-shadow(0 0 4px rgba(170, 155, 110, 0.5));
   }
+  /* Pozostałe zaznaczone z multi-select (bez "primary" focusu) */
+  .perk-node.multi-selected .perk-shape {
+    stroke: var(--acc-points);
+    stroke-width: 1.5;
+    stroke-dasharray: none;
+  }
   .perk-node.connect-source .perk-shape {
     stroke-dasharray: 4 3;
     stroke: var(--acc-points);
+  }
+  .marquee-rect {
+    fill: rgba(170, 155, 110, 0.06);
+    stroke: var(--acc-points);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    pointer-events: none;
   }
   .perk-label {
     fill: var(--text-2);
@@ -560,6 +573,24 @@
     margin-bottom: 6px;
   }
   .empty-inspector p { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+
+  .multi-banner {
+    background: rgba(170,155,110,0.06);
+    border: 1px solid rgba(170,155,110,0.3);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-2);
+  }
+  .multi-banner strong { color: var(--acc-points); font-weight: 700; }
+  .multi-banner .multi-hint {
+    display: block;
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 4px;
+  }
 
   .inspector h2 {
     font-size: 15px;
@@ -1265,7 +1296,8 @@ const STATE = {
   ui: {
     activeCategory: 'general',
     activeSpecId: 'strength',
-    selectedPerkId: null,
+    selectedPerkId: null,            // "ostatni zaznaczony" – do inspectora
+    selectedPerkIds: new Set(),      // multi-select – źródło prawdy dla canvas
     connectMode: false,
     connectFrom: null,
     pan: { x: 0, y: 0 },
@@ -1275,6 +1307,12 @@ const STATE = {
     panStart: null,
     dragging: null,
     dragStart: null,
+    // Marquee (zaznaczanie prostokątem)
+    marquee: null,                   // { x0, y0, x1, y1 } w world coords albo null
+    marqueeAdditive: false,          // czy z Shift (dodawanie do istniejącej selekcji)
+    marqueeBaseline: null,           // selekcja zachowana przed marquee (przy Shift)
+    // Drag grupowy
+    dragOriginPositions: null,       // Map<perkId, {x,y}> startowe pozycje dla grupy
   },
   modal: { mode: null, editingId: null },
 };
@@ -1306,6 +1344,68 @@ function getSelectedPerk(){
   const s = getActiveSpec();
   if (!s || !STATE.ui.selectedPerkId) return null;
   return s.perks[STATE.ui.selectedPerkId] || null;
+}
+
+// ============= SELEKCJA: helpery =============
+function isPerkSelected(perkId){
+  return STATE.ui.selectedPerkIds.has(perkId);
+}
+function selectionSize(){
+  return STATE.ui.selectedPerkIds.size;
+}
+function setSelection(perkIds, primary){
+  STATE.ui.selectedPerkIds = new Set(perkIds || []);
+  // primary = perk pokazywany w inspektorze
+  if (primary && STATE.ui.selectedPerkIds.has(primary)) {
+    STATE.ui.selectedPerkId = primary;
+  } else {
+    // jeżeli nie podano – wybierz "ostatni" (dowolny z setu) albo null
+    const arr = Array.from(STATE.ui.selectedPerkIds);
+    STATE.ui.selectedPerkId = arr.length > 0 ? arr[arr.length - 1] : null;
+  }
+}
+function clearSelection(){
+  STATE.ui.selectedPerkIds.clear();
+  STATE.ui.selectedPerkId = null;
+}
+function toggleSelection(perkId){
+  if (STATE.ui.selectedPerkIds.has(perkId)) {
+    STATE.ui.selectedPerkIds.delete(perkId);
+    if (STATE.ui.selectedPerkId === perkId) {
+      const arr = Array.from(STATE.ui.selectedPerkIds);
+      STATE.ui.selectedPerkId = arr.length > 0 ? arr[arr.length - 1] : null;
+    }
+  } else {
+    STATE.ui.selectedPerkIds.add(perkId);
+    STATE.ui.selectedPerkId = perkId;
+  }
+}
+function selectAll(){
+  const spec = getActiveSpec();
+  if (!spec) return;
+  const ids = Object.keys(spec.perks);
+  STATE.ui.selectedPerkIds = new Set(ids);
+  STATE.ui.selectedPerkId = ids.length > 0 ? ids[ids.length - 1] : null;
+}
+
+// Ekran → świat (dla marquee i innych przeliczeń)
+function screenToWorld(clientX, clientY){
+  const rect = $('#treeCanvas').getBoundingClientRect();
+  const sx = clientX - rect.left;
+  const sy = clientY - rect.top;
+  return {
+    x: (sx - STATE.ui.pan.x) / STATE.ui.zoom,
+    y: (sy - STATE.ui.pan.y) / STATE.ui.zoom,
+  };
+}
+
+// Test: czy perk leży w prostokącie świata
+function perkInRect(perk, x0, y0, x1, y1){
+  const half = 28; // ~połowa rozmiaru ikony
+  const minX = Math.min(x0, x1), maxX = Math.max(x0, x1);
+  const minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
+  return perk.x + half >= minX && perk.x - half <= maxX
+      && perk.y + half >= minY && perk.y - half <= maxY;
 }
 
 function showToast(msg, type){
@@ -1383,6 +1483,7 @@ function renderCatTabs(){
       const firstSpec = type ? Object.keys(type.specializations)[0] : null;
       STATE.ui.activeSpecId = firstSpec || null;
       STATE.ui.selectedPerkId = null;
+      STATE.ui.selectedPerkIds.clear();
       STATE.ui.pan = { x: 0, y: 0 };
       STATE.ui.zoom = 1;
       renderAll();
@@ -1428,6 +1529,7 @@ function renderSpecList(){
       if (e.target.closest('.actions')) return;
       STATE.ui.activeSpecId = spec.id;
       STATE.ui.selectedPerkId = null;
+      STATE.ui.selectedPerkIds.clear();
       STATE.ui.pan = { x: 0, y: 0 };
       STATE.ui.zoom = 1;
       renderAll();
@@ -1443,6 +1545,7 @@ function renderSpecList(){
         if (STATE.ui.activeSpecId === spec.id) {
           STATE.ui.activeSpecId = Object.keys(type.specializations)[0] || null;
           STATE.ui.selectedPerkId = null;
+          STATE.ui.selectedPerkIds.clear();
         }
         renderAll();
         syncDeleteSpec(catId, removedId);
@@ -1522,7 +1625,11 @@ function renderCanvas(){
   Object.values(spec.perks).forEach(perk => {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     let cls = 'perk-node';
-    if (STATE.ui.selectedPerkId === perk.id) cls += ' selected';
+    if (STATE.ui.selectedPerkId === perk.id) {
+      cls += ' selected';
+    } else if (STATE.ui.selectedPerkIds.has(perk.id)) {
+      cls += ' multi-selected';
+    }
     if (STATE.ui.connectFrom === perk.id) cls += ' connect-source';
     g.setAttribute('class', cls);
     g.setAttribute('transform', 'translate(' + perk.x + ',' + perk.y + ')');
@@ -1577,6 +1684,22 @@ function renderCanvas(){
     nodesLayer.appendChild(g);
   });
 
+  // Marquee (zaznaczanie prostokątem)
+  if (STATE.ui.marquee) {
+    const m = STATE.ui.marquee;
+    const rx = Math.min(m.x0, m.x1);
+    const ry = Math.min(m.y0, m.y1);
+    const rw = Math.abs(m.x1 - m.x0);
+    const rh = Math.abs(m.y1 - m.y0);
+    const mr = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    mr.setAttribute('class', 'marquee-rect');
+    mr.setAttribute('x', rx);
+    mr.setAttribute('y', ry);
+    mr.setAttribute('width', rw);
+    mr.setAttribute('height', rh);
+    nodesLayer.appendChild(mr);
+  }
+
   $('#zoomInfo').textContent = Math.round(STATE.ui.zoom * 100) + '%';
 }
 
@@ -1610,12 +1733,25 @@ function renderInspector(){
     inspector.innerHTML =
       '<div class="empty-inspector"><div>' +
         '<h2>Wybierz kafelek</h2>' +
-        '<p>Kliknij perk po środku, żeby<br>edytować jego dane.</p>' +
+        '<p>Kliknij perk po środku, żeby<br>edytować jego dane.<br><br>' +
+        'Przeciągnij na pustym miejscu, żeby<br>zaznaczyć kilka perków na raz.</p>' +
       '</div></div>';
     return;
   }
 
   inspector.style.setProperty('--cat-color', cat.accent);
+
+  // Banner informujący o multi-select
+  const multiCount = STATE.ui.selectedPerkIds.size;
+  let multiBanner = '';
+  if (multiCount > 1) {
+    multiBanner =
+      '<div class="multi-banner">' +
+        '<span>Zaznaczono <strong>' + multiCount + '</strong> perków.</span>' +
+        '<span class="multi-hint">Edycja poniżej dotyczy tylko aktywnego.<br>' +
+        'Delete = usuń wszystkie · Ctrl+D = duplikuj wszystkie</span>' +
+      '</div>';
+  }
 
   const otherPerks = Object.values(spec.perks).filter(p => p.id !== perk.id);
   const reqOptions = otherPerks.map(p =>
@@ -1628,6 +1764,7 @@ function renderInspector(){
   const effects = Object.entries(lvl0).filter(([k]) => k !== 'desc');
 
   let html = '<div class="inspector">';
+  html += multiBanner;
   html += '<h2>' + escapeHtml(perk.label || perk.id) + '</h2>';
   html += '<div class="field"><label>ID</label><input class="mono" data-bind="id" value="' + escapeHtml(perk.id) + '"></div>';
   html += '<div class="field"><label>Nazwa (label)</label><input data-bind="label" value="' + escapeHtml(perk.label || '') + '"></div>';
@@ -1846,25 +1983,53 @@ function addPerk(){
     x, y,
   };
   spec.perks[id] = perk;
-  STATE.ui.selectedPerkId = id;
+  setSelection([id], id);
   renderAll();
   syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, perk);
 }
 
 function duplicatePerk(){
-  const perk = getSelectedPerk();
   const spec = getActiveSpec();
-  if (!perk || !spec) return;
-  const newId = uid('perk');
-  const copy = JSON.parse(JSON.stringify(perk));
-  copy.id = newId;
-  copy.label = (perk.label || 'Perk') + ' (kopia)';
-  copy.x = (perk.x || 0) + 80;
-  copy.y = (perk.y || 0) + 80;
-  spec.perks[newId] = copy;
-  STATE.ui.selectedPerkId = newId;
+  if (!spec) return;
+  const ids = Array.from(STATE.ui.selectedPerkIds);
+  if (ids.length === 0) return;
+
+  const catId = STATE.ui.activeCategory;
+  const sid = STATE.ui.activeSpecId;
+  // Mapowanie stary→nowy ID, żeby zachować zależności wewnątrz zaznaczonej grupy
+  const idMap = new Map();
+  const newPerks = [];
+
+  ids.forEach(oldId => {
+    const orig = spec.perks[oldId];
+    if (!orig) return;
+    const newId = uid('perk');
+    idMap.set(oldId, newId);
+    const copy = JSON.parse(JSON.stringify(orig));
+    copy.id = newId;
+    copy.label = (orig.label || 'Perk') + ' (kopia)';
+    copy.x = (orig.x || 0) + 80;
+    copy.y = (orig.y || 0) + 80;
+    newPerks.push(copy);
+  });
+
+  // Przemapuj requiredPerks: jeżeli wymaganie wskazuje na perka który też duplikujemy,
+  // przekieruj na jego kopię. W przeciwnym razie zachowaj oryginalne wymaganie.
+  newPerks.forEach(copy => {
+    const remapped = {};
+    Object.entries(copy.requiredPerks || {}).forEach(([reqId, lvl]) => {
+      const target = idMap.get(reqId) || reqId;
+      remapped[target] = lvl;
+    });
+    copy.requiredPerks = remapped;
+    spec.perks[copy.id] = copy;
+    syncPerk(catId, sid, copy);
+  });
+
+  // Zaznacz wszystkie nowe kopie
+  setSelection(newPerks.map(p => p.id), newPerks.length > 0 ? newPerks[newPerks.length - 1].id : null);
   renderAll();
-  syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, copy);
+  if (newPerks.length > 1) showToast('Zduplikowano ' + newPerks.length + ' perków');
 }
 
 function deletePerk(id){
@@ -1880,9 +2045,51 @@ function deletePerk(id){
       syncPerk(catId, specId, p);
     }
   });
-  if (STATE.ui.selectedPerkId === id) STATE.ui.selectedPerkId = null;
+  STATE.ui.selectedPerkIds.delete(id);
+  if (STATE.ui.selectedPerkId === id) {
+    const arr = Array.from(STATE.ui.selectedPerkIds);
+    STATE.ui.selectedPerkId = arr.length > 0 ? arr[arr.length - 1] : null;
+  }
   renderAll();
   syncDeletePerk(catId, specId, id);
+}
+
+function deleteSelected(){
+  const spec = getActiveSpec();
+  if (!spec) return;
+  const ids = Array.from(STATE.ui.selectedPerkIds);
+  if (ids.length === 0) return;
+  if (ids.length === 1) {
+    const p = spec.perks[ids[0]];
+    if (p && !confirm('Usunąć perk "' + (p.label || p.id) + '"?')) return;
+    deletePerk(ids[0]);
+    return;
+  }
+  if (!confirm('Usunąć ' + ids.length + ' zaznaczonych perków?')) return;
+  // Najpierw usuń wszystkie referencje gdzie którykolwiek z usuwanych jest "rodzicem"
+  const idsSet = new Set(ids);
+  const catId = STATE.ui.activeCategory;
+  const specId = STATE.ui.activeSpecId;
+  Object.values(spec.perks).forEach(p => {
+    if (idsSet.has(p.id)) return;
+    if (!p.requiredPerks) return;
+    let changed = false;
+    Object.keys(p.requiredPerks).forEach(reqId => {
+      if (idsSet.has(reqId)) {
+        delete p.requiredPerks[reqId];
+        changed = true;
+      }
+    });
+    if (changed) syncPerk(catId, specId, p);
+  });
+  // Teraz usuń same perki
+  ids.forEach(id => {
+    delete spec.perks[id];
+    syncDeletePerk(catId, specId, id);
+  });
+  clearSelection();
+  renderAll();
+  showToast('Usunięto ' + ids.length + ' perków');
 }
 
 function autoLayout(){
@@ -1960,8 +2167,11 @@ function onPerkClick(perkId){
     }
     return;
   }
-  STATE.ui.selectedPerkId = perkId;
-  renderAll();
+  // Klik z modyfikatorem – Shift / Ctrl / Cmd dorzucają/odrzucają
+  // (tu odpalane jest dopiero po mouseup, jeżeli ruchu nie było; zwykłe zaznaczenie
+  // zazwyczaj jest już wykonane przez onPerkMouseDown – ale zostawiamy tu Shift
+  // jako fallback, gdyby ktoś dwukrotnie kliknął bez ruszania)
+  // Logika zaznaczania jest w onPerkMouseDown – tutaj nic dodatkowego.
 }
 
 function onPerkMouseDown(e, perkId){
@@ -1970,12 +2180,36 @@ function onPerkMouseDown(e, perkId){
   const spec = getActiveSpec();
   const perk = spec.perks[perkId];
   if (!perk) return;
-  STATE.ui.dragging = perkId;
-  STATE.ui.dragStart = {
-    sx: e.clientX, sy: e.clientY,
-    px: perk.x, py: perk.y,
-    moved: false,
-  };
+
+  // Selekcja wykonywana JUŻ tu (na mousedown), żeby drag działał dla całej grupy.
+  const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+  if (additive) {
+    toggleSelection(perkId);
+  } else if (!STATE.ui.selectedPerkIds.has(perkId)) {
+    // Klik bez modyfikatora poza grupą = wybierz tylko ten jeden
+    setSelection([perkId], perkId);
+  } else {
+    // Klik bez modyfikatora w obrębie grupy = ustaw tego perka jako primary,
+    // ale zostaw grupę nietkniętą (żeby drag działał dla całej grupy)
+    STATE.ui.selectedPerkId = perkId;
+  }
+  renderAll();
+
+  // Przygotuj drag (jeżeli nadal coś zaznaczone)
+  if (STATE.ui.selectedPerkIds.size > 0) {
+    const origins = new Map();
+    STATE.ui.selectedPerkIds.forEach(id => {
+      const p = spec.perks[id];
+      if (p) origins.set(id, { x: p.x, y: p.y });
+    });
+    STATE.ui.dragging = perkId;
+    STATE.ui.dragOriginPositions = origins;
+    STATE.ui.dragStart = {
+      sx: e.clientX, sy: e.clientY,
+      px: perk.x, py: perk.y,    // pozycja aktywnego (do snapowania)
+      moved: false,
+    };
+  }
   e.preventDefault();
   e.stopPropagation();
 }
@@ -1987,14 +2221,53 @@ function onMouseMove(e){
     const dy = (e.clientY - ds.sy) / STATE.ui.zoom;
     if (Math.abs(dx) + Math.abs(dy) > 3) ds.moved = true;
     const spec = getActiveSpec();
-    const perk = spec.perks[STATE.ui.dragging];
-    if (perk) {
-      perk.x = Math.round((ds.px + dx) / 20) * 20;
-      perk.y = Math.round((ds.py + dy) / 20) * 20;
-      const node = $('#nodesLayer').querySelector('[data-perk-id="' + perk.id + '"]');
-      if (node) node.setAttribute('transform', 'translate(' + perk.x + ',' + perk.y + ')');
-      renderEdgesOnly();
+    if (!spec) return;
+
+    // Oblicz przesunięcie zsnapowane po pozycji "lidera" (perka pod kursorem)
+    const newLeaderX = Math.round((ds.px + dx) / 20) * 20;
+    const newLeaderY = Math.round((ds.py + dy) / 20) * 20;
+    const realDx = newLeaderX - ds.px;
+    const realDy = newLeaderY - ds.py;
+
+    // Zastosuj to samo przesunięcie do każdego zaznaczonego perka (od jego origin)
+    const origins = STATE.ui.dragOriginPositions;
+    if (origins) {
+      origins.forEach((origin, id) => {
+        const p = spec.perks[id];
+        if (!p) return;
+        p.x = origin.x + realDx;
+        p.y = origin.y + realDy;
+        const node = $('#nodesLayer').querySelector('[data-perk-id="' + id + '"]');
+        if (node) node.setAttribute('transform', 'translate(' + p.x + ',' + p.y + ')');
+      });
     }
+    renderEdgesOnly();
+  } else if (STATE.ui.marquee) {
+    // Aktualizuj prostokąt zaznaczenia
+    const w = screenToWorld(e.clientX, e.clientY);
+    STATE.ui.marquee.x1 = w.x;
+    STATE.ui.marquee.y1 = w.y;
+    // Oblicz nową selekcję
+    const spec = getActiveSpec();
+    if (spec) {
+      const m = STATE.ui.marquee;
+      const inside = new Set();
+      Object.values(spec.perks).forEach(p => {
+        if (perkInRect(p, m.x0, m.y0, m.x1, m.y1)) inside.add(p.id);
+      });
+      if (STATE.ui.marqueeAdditive && STATE.ui.marqueeBaseline) {
+        // Suma baseline + inside
+        const merged = new Set(STATE.ui.marqueeBaseline);
+        inside.forEach(id => merged.add(id));
+        STATE.ui.selectedPerkIds = merged;
+      } else {
+        STATE.ui.selectedPerkIds = inside;
+      }
+      // primary = ostatni dołączony do selekcji (jeżeli jakiś jest)
+      const arr = Array.from(STATE.ui.selectedPerkIds);
+      STATE.ui.selectedPerkId = arr.length > 0 ? arr[arr.length - 1] : null;
+    }
+    renderCanvas();
   } else if (STATE.ui.panning) {
     const dx = e.clientX - STATE.ui.panStart.sx;
     const dy = e.clientY - STATE.ui.panStart.sy;
@@ -2007,12 +2280,29 @@ function onMouseMove(e){
 function onMouseUp(){
   if (STATE.ui.dragging) {
     if (STATE.ui.dragStart && STATE.ui.dragStart.moved) {
+      // Wyślij nowe pozycje wszystkich przemieszczonych perków
       const spec = getActiveSpec();
-      const perk = spec ? spec.perks[STATE.ui.dragging] : null;
-      if (perk) syncMove(STATE.ui.activeCategory, STATE.ui.activeSpecId, perk.id, perk.x, perk.y);
+      const cat = STATE.ui.activeCategory;
+      const sid = STATE.ui.activeSpecId;
+      const origins = STATE.ui.dragOriginPositions;
+      if (spec && origins) {
+        origins.forEach((origin, id) => {
+          const p = spec.perks[id];
+          if (p && (p.x !== origin.x || p.y !== origin.y)) {
+            syncMove(cat, sid, p.id, p.x, p.y);
+          }
+        });
+      }
     }
     setTimeout(() => { STATE.ui.dragStart = null; }, 0);
     STATE.ui.dragging = null;
+    STATE.ui.dragOriginPositions = null;
+  }
+  if (STATE.ui.marquee) {
+    STATE.ui.marquee = null;
+    STATE.ui.marqueeAdditive = false;
+    STATE.ui.marqueeBaseline = null;
+    renderAll(); // odśwież inspector po commit selekcji
   }
   if (STATE.ui.panning) {
     STATE.ui.panning = false;
@@ -2024,14 +2314,26 @@ function onCanvasMouseDown(e){
   if (e.target.closest('.perk-node')) return;
   if (e.target.closest('.edge-line')) return;
   if (e.button !== 0 && e.button !== 1) return;
-  STATE.ui.panning = true;
-  STATE.ui.panStart = { sx: e.clientX, sy: e.clientY, px: STATE.ui.pan.x, py: STATE.ui.pan.y };
-  $('#treeCanvas').classList.add('panning');
-  if (e.button === 0 && !STATE.ui.connectMode) {
-    STATE.ui.selectedPerkId = null;
-    renderInspector();
-    renderCanvas();
+
+  // Lewy przycisk + nie connect-mode = marquee zamiast pan
+  // Środkowy przycisk = zawsze pan
+  // Lewy + Alt = pan (dla osób które wolą)
+  const wantMarquee = (e.button === 0) && !STATE.ui.connectMode && !e.altKey;
+
+  if (wantMarquee) {
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+    const w = screenToWorld(e.clientX, e.clientY);
+    STATE.ui.marquee = { x0: w.x, y0: w.y, x1: w.x, y1: w.y };
+    STATE.ui.marqueeAdditive = additive;
+    STATE.ui.marqueeBaseline = additive ? new Set(STATE.ui.selectedPerkIds) : null;
+    if (!additive) clearSelection();
+    renderAll();
+  } else {
+    STATE.ui.panning = true;
+    STATE.ui.panStart = { sx: e.clientX, sy: e.clientY, px: STATE.ui.pan.x, py: STATE.ui.pan.y };
+    $('#treeCanvas').classList.add('panning');
   }
+  e.preventDefault();
 }
 
 function onWheel(e){
@@ -2100,6 +2402,7 @@ function saveSpecModal(){
     type.specializations[id] = { id, label: name, color, btnColor, desc, perks: {} };
     STATE.ui.activeSpecId = id;
     STATE.ui.selectedPerkId = null;
+    STATE.ui.selectedPerkIds.clear();
   }
   closeSpecModal();
   renderAll();
@@ -2150,6 +2453,7 @@ function applyImport(){
     STATE.data = obj;
     STATE.ui.activeSpecId = Object.keys(obj.types[STATE.ui.activeCategory].specializations)[0] || null;
     STATE.ui.selectedPerkId = null;
+    STATE.ui.selectedPerkIds.clear();
     closeIoModal();
     renderAll();
     saveLocal(true);
@@ -2193,10 +2497,7 @@ function renderAll(){
 function init(){
   $('#addPerkBtn').onclick = addPerk;
   $('#duplicateBtn').onclick = duplicatePerk;
-  $('#deleteBtn').onclick = () => {
-    const p = getSelectedPerk();
-    if (p && confirm('Usunąć perk "' + (p.label || p.id) + '"?')) deletePerk(p.id);
-  };
+  $('#deleteBtn').onclick = deleteSelected;
   $('#autoLayoutBtn').onclick = autoLayout;
   $('#connectBtn').onclick = toggleConnectMode;
   $('#saveBtn').onclick = async () => {
@@ -2231,15 +2532,19 @@ function init(){
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, select')) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
-      const p = getSelectedPerk();
-      if (p) deletePerk(p.id);
+      e.preventDefault();
+      deleteSelected();
     } else if (e.key === 'Escape') {
       if (STATE.ui.connectMode) toggleConnectMode();
-      else if (STATE.ui.selectedPerkId) { STATE.ui.selectedPerkId = null; renderAll(); }
+      else if (STATE.ui.selectedPerkIds.size > 0) { clearSelection(); renderAll(); }
       else { closeSpecModal(); closeIoModal(); }
     } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicatePerk();
+    } else if ((e.key === 'a' || e.key === 'A') && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      selectAll();
+      renderAll();
     } else if ((e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       Sync.flush().then(() => saveLocal(false));
@@ -2383,6 +2688,7 @@ function bootApp(){
       if (!activeType || !activeType.specializations[STATE.ui.activeSpecId]) {
         STATE.ui.activeSpecId = activeType ? Object.keys(activeType.specializations)[0] || null : null;
         STATE.ui.selectedPerkId = null;
+        STATE.ui.selectedPerkIds.clear();
       }
       renderAll();
     }
@@ -2396,8 +2702,10 @@ function bootApp(){
       if (!t || !t.specializations[selSpec]) {
         STATE.ui.activeSpecId = t ? Object.keys(t.specializations)[0] || null : null;
         STATE.ui.selectedPerkId = null;
+        STATE.ui.selectedPerkIds.clear();
       } else if (selPerk && !t.specializations[selSpec].perks[selPerk]) {
         STATE.ui.selectedPerkId = null;
+        STATE.ui.selectedPerkIds.clear();
       }
       renderAll();
     });
