@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --bg-0: #131316;
@@ -778,18 +779,18 @@ function defaultLevels(count){
   return arr;
 }
 
-// ============= KONFIGURACJA =============
-// Jeżeli ustawiłeś token w config.php, wpisz go też tutaj.
-// Pusty string = brak autoryzacji (musi pasować do PHP).
+// ============= KONFIGURACJA SUPABASE =============
+// Wpisz dane z Supabase Dashboard → Project Settings → API
+//   - Project URL  →  supabaseUrl
+//   - anon public key  →  supabaseAnonKey
 const APP_CONFIG = {
-  apiUrl: 'api.php',
-  apiToken: '',
-  // Co ile ms odpytywać serwer o zmiany innych użytkowników (0 = wyłączone)
-  pollIntervalMs: 5000,
-  // Debounce po lokalnej zmianie (ms) – odczekuje, łączy zmiany w batch
+  supabaseUrl:     'https://TWOJ-PROJEKT.supabase.co',
+  supabaseAnonKey: 'TWOJ-ANON-KEY',
   saveDebounceMs: 350,
+  realtime: true,
 };
 
+// Stabilny ID klienta – pozwala filtrować własne zmiany w realtime
 const CLIENT_ID = (() => {
   try {
     let id = localStorage.getItem('skilltree_client_id');
@@ -801,59 +802,194 @@ const CLIENT_ID = (() => {
   } catch (e) { return 'c_anon'; }
 })();
 
-// ============= SYNC: kolejka + komunikacja z API =============
+// ============= SYNC: Supabase backend =============
 const Sync = (() => {
-  // Kolejka pendingu per "klucz" – ostatni wygrywa (np. wiele zmian
-  // tego samego perka łączymy w jeden POST)
+  let _client = null;
   const pending = new Map();
   const inFlight = new Set();
   let saveTimer = null;
-  let pollTimer = null;
-  let online = true;
-  let suspended = false;          // np. podczas ładowania z serwera
-  let dirtyCounter = 0;           // do wskaźnika "zapisywanie..."
-  let listeners = [];
+  let realtimeChannel = null;
+  let reloadTimer = null;
+  let suspended = false;
+  let dirtyCounter = 0;
+  const listeners = [];
+
+  function client(){
+    if (_client) return _client;
+    if (!window.supabase || !window.supabase.createClient) {
+      throw new Error('Biblioteka Supabase nie załadowana – sprawdź połączenie z internetem');
+    }
+    if (!APP_CONFIG.supabaseUrl || APP_CONFIG.supabaseUrl.includes('TWOJ-PROJEKT')) {
+      throw new Error('Brak konfiguracji Supabase – wpisz supabaseUrl i supabaseAnonKey w APP_CONFIG');
+    }
+    _client = window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey, {
+      realtime: { params: { eventsPerSecond: 5 } },
+    });
+    return _client;
+  }
 
   function setStatus(state, detail){
     listeners.forEach(fn => { try { fn(state, detail); } catch(e){} });
   }
   function onStatus(fn){ listeners.push(fn); }
 
-  async function call(action, payload, opts){
-    opts = opts || {};
-    const headers = {
-      'Content-Type': 'application/json',
-      'X-Client-Id': CLIENT_ID,
+  function rowToPerk(r){
+    let req = r.required_perks;
+    if (typeof req === 'string') { try { req = JSON.parse(req); } catch(e){ req = {}; } }
+    if (!req || Array.isArray(req)) req = {};
+    let levels = r.levels;
+    if (typeof levels === 'string') { try { levels = JSON.parse(levels); } catch(e){ levels = [{desc:''}]; } }
+    if (!Array.isArray(levels) || levels.length === 0) levels = [{desc:''}];
+    return {
+      id: r.id,
+      label: r.label || r.id,
+      image: r.image || '',
+      requiredLevel: r.required_level || 1,
+      requiredPerks: req,
+      levels: levels,
+      x: r.pos_x || 200,
+      y: r.pos_y || 200,
     };
-    if (APP_CONFIG.apiToken) headers['X-API-Token'] = APP_CONFIG.apiToken;
-    const body = Object.assign({ action }, payload || {});
-    let res;
-    try {
-      res = await fetch(APP_CONFIG.apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        cache: 'no-store',
-        credentials: 'same-origin',
-      });
-    } catch (e) {
-      online = false;
-      setStatus('offline', e.message);
-      throw e;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(()=>'');
-      let err;
-      try { err = JSON.parse(text); } catch(e) { err = { error: text || res.statusText }; }
-      const e = new Error(err.error || ('HTTP ' + res.status));
-      e.status = res.status;
-      throw e;
-    }
-    online = true;
-    return res.json();
   }
 
-  // Publiczne wysyłanie pojedynczych operacji
+  function perkToRow(catId, specId, p){
+    return {
+      id: p.id,
+      spec_id: specId,
+      category_id: catId,
+      label: p.label || p.id,
+      image: p.image || '',
+      required_level: p.requiredLevel || 1,
+      pos_x: p.x || 200,
+      pos_y: p.y || 200,
+      required_perks: p.requiredPerks || {},
+      levels: p.levels || [{desc:''}],
+      last_modified_by: CLIENT_ID,
+    };
+  }
+
+  async function call(action, payload){
+    const sb = client();
+
+    if (action === 'load') {
+      const [cats, specs, perks] = await Promise.all([
+        sb.from('categories').select('*').order('sort_order'),
+        sb.from('specializations').select('*').order('sort_order'),
+        sb.from('perks').select('*'),
+      ]);
+      if (cats.error) throw new Error('categories: ' + cats.error.message);
+      if (specs.error) throw new Error('specializations: ' + specs.error.message);
+      if (perks.error) throw new Error('perks: ' + perks.error.message);
+
+      const types = {};
+      for (const c of cats.data) {
+        let levels = c.levels;
+        if (typeof levels === 'string') { try { levels = JSON.parse(levels); } catch(e){ levels = []; } }
+        types[c.id] = {
+          name: c.name,
+          accent: c.accent,
+          typeKey: c.type_key,
+          levels: levels || [],
+          specializations: {},
+        };
+      }
+      for (const s of specs.data) {
+        if (!types[s.category_id]) continue;
+        types[s.category_id].specializations[s.id] = {
+          id: s.id,
+          label: s.label || s.id,
+          desc: s.description || '',
+          color: s.color || '#7d8a78',
+          btnColor: s.btn_color || '#7d8a7840',
+          perks: {},
+        };
+      }
+      for (const p of perks.data) {
+        const cat = types[p.category_id];
+        if (!cat) continue;
+        const spec = cat.specializations[p.spec_id];
+        if (!spec) continue;
+        spec.perks[p.id] = rowToPerk(p);
+      }
+      return { ok: true, data: { types: types, version: 1 } };
+    }
+
+    if (action === 'save_perk') {
+      const { categoryId, specId, perk } = payload;
+      const row = perkToRow(categoryId, specId, perk);
+      const { error } = await sb.from('perks').upsert(row, { onConflict: 'id,spec_id,category_id' });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    if (action === 'move_perk') {
+      const { categoryId, specId, perkId, x, y } = payload;
+      const { error } = await sb.from('perks')
+        .update({ pos_x: x, pos_y: y, last_modified_by: CLIENT_ID })
+        .eq('id', perkId).eq('spec_id', specId).eq('category_id', categoryId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    if (action === 'delete_perk') {
+      const { categoryId, specId, perkId } = payload;
+      const refs = await sb.from('perks')
+        .select('id, required_perks')
+        .eq('spec_id', specId).eq('category_id', categoryId);
+      if (refs.error) throw new Error(refs.error.message);
+      for (const r of refs.data || []) {
+        let req = r.required_perks;
+        if (typeof req === 'string') { try { req = JSON.parse(req); } catch(e){ req = {}; } }
+        if (req && typeof req === 'object' && (perkId in req)) {
+          delete req[perkId];
+          await sb.from('perks')
+            .update({ required_perks: req, last_modified_by: CLIENT_ID })
+            .eq('id', r.id).eq('spec_id', specId).eq('category_id', categoryId);
+        }
+      }
+      const { error } = await sb.from('perks').delete()
+        .eq('id', perkId).eq('spec_id', specId).eq('category_id', categoryId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    if (action === 'save_spec') {
+      const { categoryId, spec } = payload;
+      const row = {
+        id: spec.id,
+        category_id: categoryId,
+        label: spec.label || spec.id,
+        description: spec.desc || '',
+        color: spec.color || '#7d8a78',
+        btn_color: spec.btnColor || '#7d8a7840',
+        sort_order: spec.sortOrder || 0,
+        last_modified_by: CLIENT_ID,
+      };
+      const { error } = await sb.from('specializations').upsert(row, { onConflict: 'id,category_id' });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    if (action === 'delete_spec') {
+      const { categoryId, specId } = payload;
+      const { error } = await sb.from('specializations').delete()
+        .eq('id', specId).eq('category_id', categoryId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    if (action === 'save_full') {
+      const { error } = await sb.rpc('replace_all_data', {
+        data: payload.data,
+        client: CLIENT_ID,
+      });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    throw new Error('Nieznana akcja: ' + action);
+  }
+
   function queue(opKey, action, payload){
     if (suspended) return;
     pending.set(opKey, { action, payload, ts: Date.now() });
@@ -869,15 +1005,13 @@ const Sync = (() => {
 
   async function flush(){
     if (pending.size === 0) return;
-    // Wyciągamy snapshot kolejki – nowe zmiany przyjdą do następnego flusha
     const batch = Array.from(pending.entries());
     pending.clear();
     setStatus('saving', batch.length);
 
-    let failed = [];
+    const failed = [];
     for (const [key, op] of batch) {
       if (inFlight.has(key)) {
-        // Już lecimy, dopiszemy do następnej rundy
         pending.set(key, op);
         continue;
       }
@@ -885,8 +1019,8 @@ const Sync = (() => {
       try {
         await call(op.action, op.payload);
       } catch (e) {
+        console.error('[Sync]', op.action, e);
         failed.push({ key, op, error: e.message });
-        // Wracamy do kolejki, spróbujemy ponownie
         if (!pending.has(key)) pending.set(key, op);
       } finally {
         inFlight.delete(key);
@@ -896,17 +1030,14 @@ const Sync = (() => {
     dirtyCounter = pending.size;
     if (failed.length > 0) {
       setStatus('error', failed[0].error);
-      // Retry za chwilę
       setTimeout(scheduleFlush, 2000);
     } else if (pending.size === 0) {
       setStatus('saved', null);
     } else {
-      // Coś zostało (np. concurrent edit), wyślij ponownie
       scheduleFlush();
     }
   }
 
-  // Pełne wczytanie ze serwera
   async function loadAll(){
     suspended = true;
     setStatus('loading', null);
@@ -922,41 +1053,55 @@ const Sync = (() => {
     }
   }
 
-  // Polling – periodyczne sprawdzanie zmian innych userów
   function startPolling(onUpdate){
-    if (!APP_CONFIG.pollIntervalMs) return;
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(async () => {
-      // Nie poluj jeżeli jest co wysłać (priorytet ma własny zapis)
-      if (pending.size > 0 || inFlight.size > 0) return;
-      if (document.hidden) return;
-      try {
-        const r = await call('load', {});
-        if (r && r.data) onUpdate(r.data);
-      } catch (e) { /* cicho */ }
-    }, APP_CONFIG.pollIntervalMs);
+    if (!APP_CONFIG.realtime) return;
+    if (realtimeChannel) {
+      try { client().removeChannel(realtimeChannel); } catch(e){}
+      realtimeChannel = null;
+    }
+    const sb = client();
+
+    function handleEvent(payload){
+      const row = payload.new || payload.old;
+      if (row && row.last_modified_by === CLIENT_ID) return;
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(async () => {
+        if (pending.size > 0 || inFlight.size > 0) return;
+        try {
+          const r = await call('load', {});
+          if (r && r.data) onUpdate(r.data, true);
+        } catch (e) { /* cicho */ }
+      }, 250);
+    }
+
+    realtimeChannel = sb.channel('skilltree-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'perks' }, handleEvent)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'specializations' }, handleEvent)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, handleEvent)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('[Sync] Realtime aktywne');
+        else if (status === 'CHANNEL_ERROR') console.warn('[Sync] Realtime błąd kanału');
+      });
   }
 
   function stopPolling(){
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (realtimeChannel) {
+      try { client().removeChannel(realtimeChannel); } catch(e){}
+      realtimeChannel = null;
+    }
   }
 
-  // Flush przed zamknięciem karty – synchronicznie przez Beacon API
   function flushOnUnload(){
     if (pending.size === 0) return;
     for (const [key, op] of pending.entries()) {
-      try {
-        const blob = new Blob([JSON.stringify(Object.assign({ action: op.action }, op.payload))], { type: 'application/json' });
-        // sendBeacon nie wspiera headerów, więc token musi iść jako query
-        const url = APP_CONFIG.apiUrl + (APP_CONFIG.apiToken ? '?token=' + encodeURIComponent(APP_CONFIG.apiToken) : '');
-        navigator.sendBeacon(url, blob);
-      } catch (e) {}
+      try { call(op.action, op.payload).catch(()=>{}); } catch(e) {}
     }
     pending.clear();
   }
 
   return { call, queue, flush, loadAll, startPolling, stopPolling, flushOnUnload, onStatus };
 })();
+
 
 function defaultData(){
   return {

@@ -1,149 +1,190 @@
-# Skilltree Studio – wersja PHP + MySQL
+# Skilltree Studio – wersja Supabase + GitHub Pages
 
-Edytor drzewek perków `prp-perks` z backendem PHP i bazą MySQL/MariaDB.
-Każda zmiana w UI (dodanie perka, przesunięcie, edycja efektu, usunięcie zależności)
-trafia do bazy w czasie rzeczywistym (debounce ~350 ms).
-Wielu użytkowników może pracować jednocześnie – polling co 5 s podchwytuje cudze zmiany.
+Edytor drzewek perków `prp-perks` w pełni statyczny (HTML + JS), z backendem Supabase
+(Postgres + Realtime przez WebSocket). Działa na GitHub Pages, Netlify, Cloudflare Pages
+albo dowolnym statycznym hostingu.
+
+**Realtime** (nie polling) – kiedy ktoś inny coś zmieni, Twoja karta dostaje update
+przez WebSocket w ciągu ~100 ms. Bez odświeżania, bez interwałów.
 
 ## Pliki
 
 ```
-skilltree-php/
-├── index.html       Frontend (edytor)
-├── api.php          REST API (load / save_perk / delete_perk / save_spec ...)
-├── config.php       Konfiguracja (BAZA, TOKEN, LOGOWANIE)  ← edytuj
-├── db.php           Helper PDO
-├── install.php      Instalator schematu + dane demo  ← uruchom raz, potem usuń
+skilltree-supabase/
+├── index.html             Frontend (edytor)
+├── supabase-setup.sql     Schemat bazy + dane demo + RPC
 └── README.md
 ```
 
-## Wymagania
+## Krok po kroku – pierwsza instalacja
 
-- PHP 7.4+ (działa na 8.x)
-- MySQL 5.7+ albo MariaDB 10.2+
-- Rozszerzenia PHP: `pdo`, `pdo_mysql`, `json`
+### 1. Załóż projekt Supabase
 
-## Instalacja
+1. Wejdź na <https://supabase.com> → **Start your project** → zaloguj się GitHubem.
+2. Kliknij **New project**.
+3. Wybierz organizację, wpisz nazwę (np. `skilltree`), wygeneruj hasło bazy
+   (zapisz – będzie potrzebne do kopii zapasowych), wybierz region najbliższy
+   (Frankfurt dla PL/EU). **Free tier** wystarczy w zupełności.
+4. Poczekaj ~1 min aż projekt wstanie.
 
-1. **Wgraj wszystkie pliki** na serwer (np. do katalogu `public_html/skilltree/`).
+### 2. Utwórz schemat
 
-2. **Edytuj `config.php`** i wpisz dane bazy:
-   ```php
-   'db' => [
-       'host'     => 'localhost',
-       'database' => 'prp_skilltree',
-       'username' => 'twoj_user',
-       'password' => 'twoje_haslo',
-       ...
-   ],
+1. Lewy panel → **SQL Editor** → **New query**.
+2. Otwórz lokalnie plik `supabase-setup.sql`, skopiuj **całą zawartość**.
+3. Wklej do edytora i kliknij **Run** (Ctrl+Enter).
+4. Na dole zobaczysz wynik:
    ```
+   tbl              | n
+   categories       | 4
+   specializations  | 2
+   perks            | 7
+   ```
+   To znaczy: schemat utworzony, dane demo wstawione.
 
-3. **Uruchom instalator** w przeglądarce:
-   `https://twoja-strona.pl/skilltree/install.php`
+### 3. Pobierz klucze API
 
-   Utworzy bazę (jeśli nie istnieje), tabele i wstępne dane demo.
+1. Lewy panel → **Project Settings** (ikonka koła zębatego) → **API**.
+2. Skopiuj dwie wartości:
+   - **Project URL** – np. `https://abcdefghij.supabase.co`
+   - **anon public** key – długi token JWT (zaczyna się od `eyJ...`)
 
-4. **USUŃ `install.php`** z serwera. Bez tego ktoś mógłby zresetować dane.
+### 4. Wklej dane do `index.html`
 
-5. **Otwórz `index.html`** – możesz pracować.
+Otwórz `index.html` w edytorze, znajdź na górze sekcji `<script>`:
+
+```js
+const APP_CONFIG = {
+  supabaseUrl:     'https://TWOJ-PROJEKT.supabase.co',
+  supabaseAnonKey: 'TWOJ-ANON-KEY',
+  saveDebounceMs: 350,
+  realtime: true,
+};
+```
+
+Wpisz tam swoje wartości z kroku 3.
+
+### 5. Test lokalny (opcjonalnie)
+
+Możesz po prostu otworzyć `index.html` dwukrotnym kliknięciem – działa.
+Albo z prostym serwerem:
+
+```bash
+python3 -m http.server 8000
+# otwórz http://localhost:8000
+```
+
+Powinieneś zobaczyć drzewka Siła i Trucker (dane demo).
+
+### 6. Deploy na GitHub Pages
+
+```bash
+git init
+git add index.html README.md supabase-setup.sql
+git commit -m "Initial"
+git remote add origin git@github.com:TWOJ_USER/skilltree-editor.git
+git push -u origin main
+```
+
+Następnie w repo na GitHubie:
+- **Settings** → **Pages** → Source = `Deploy from a branch` → Branch = `main` / `/ (root)` → **Save**
+- Po ~1 minucie strona jest na `https://TWOJ_USER.github.io/skilltree-editor/`
+
+## Jak działa zapis i sync
+
+Każda zmiana w UI (dodanie perka, przesunięcie, edycja efektu, usunięcie zależności):
+
+1. **Lokalnie aktualizujemy stan** + odświeżamy widok natychmiast.
+2. Operacja trafia do **kolejki** (per-encja, klucz np. `perk:general:strength:p_str_1`).
+3. Po **350 ms bezczynności** kolejka jest opróżniana batchem do Supabase
+   (każda zmiana to upsert na odpowiedniej tabeli).
+4. Każdy upsert ustawia `last_modified_by = CLIENT_ID` (unikalne dla karty/przeglądarki).
+5. **Supabase rozsyła zmianę** przez Realtime do wszystkich subskrybowanych kart.
+6. Karty filtrują własne zmiany (po `last_modified_by`) i przeładowują tylko
+   przy zmianach z innych klientów.
+
+W rezultacie: szybkie UI lokalne + natychmiastowy refresh u innych edytorów.
 
 ## Bezpieczeństwo
 
-Domyślnie API jest otwarte dla każdego, kto ma adres URL. Aby zabezpieczyć
-edytor:
+⚠️  **Ważne:** Klucz `anon` w kodzie **JEST PUBLICZNY** – tak działa Supabase.
+Razem z domyślnymi politykami RLS (Row Level Security) z `supabase-setup.sql`,
+**każdy kto zna URL Twojego repo na GitHubie może edytować dane**.
 
-1. Wygeneruj losowy token, np. w PHP: `php -r 'echo bin2hex(random_bytes(16));'`
-2. W `config.php` ustaw `'token' => 'wygenerowany_token'`
-3. W `index.html` znajdź `APP_CONFIG` (góra `<script>`) i wpisz ten sam token
-   w `apiToken: '...'`
+To jest OK jeżeli:
+- Jesteś sam i URL nie jest jakoś szczególnie publiczny
+- Twój zespół (kilku adminów) zna URL i sobie ufa
+- Repo na GitHubie jest **prywatne** (URL Pages też jest mniej widoczny)
 
-Token leci w nagłówku `X-API-Token`. Bez niego API zwraca 401.
+Jeżeli potrzebujesz prawdziwej autoryzacji:
 
-W produkcji rozważ też dodanie `.htaccess` na poziomie katalogu (BasicAuth)
-albo umieszczenie edytora pod ścieżką znaną tylko adminom.
+### Opcja A – Supabase Auth (proste)
+
+1. W Supabase Dashboard → **Authentication** → **Providers** → włącz `Email`
+2. **Authentication** → **Users** → **Add user** → utwórz konta dla każdego admina
+3. W `supabase-setup.sql` zamień policy:
+   ```sql
+   CREATE POLICY "all access perks" ON perks
+     FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+   ```
+   (i analogicznie dla `categories`, `specializations`)
+4. W `index.html` dorzuć ekran logowania – mogę dorzucić gotowy snippet, daj znać.
+
+### Opcja B – tajny prefiks URL
+
+Trzymaj edytor pod ścieżką `https://TWOJ_USER.github.io/repo/?key=ABCD...`
+i sprawdzaj `URLSearchParams` przed inicjalizacją Supabase. Słabe, ale wystarczy
+przeciw przypadkowym odwiedzającym.
+
+### Opcja C – prywatne repo
+
+GitHub Pages dla prywatnych repo jest dostępny w planie GitHub Pro
+(za 4 USD/mies) lub Enterprise. URL Pages jest publiczny ale obfuskowany.
 
 ## Schemat bazy
 
-| Tabela | Zawiera |
-|---|---|
-| `categories` | 4 wiersze: `general`, `civ`, `crime`, `faction` + globalne `levels[]` |
-| `specializations` | drzewka perków (np. `strength`, `trucker`) – PK to `(id, category_id)` |
-| `perks` | pojedyncze perki – PK `(id, spec_id, category_id)`, FK do `specializations` z `ON DELETE CASCADE` |
-| `change_log` | historia operacji (audit trail) – możesz wyłączyć w `config.php` |
-
-`requiredPerks` i `levels[]` są trzymane jako JSON w jednej kolumnie –
-to upraszcza zapis bez tracenia zgodności z `Config.Types`.
-
-## API endpoints
-
-Wszystkie używają `POST application/json` z polem `action`:
-
-| Action | Payload | Opis |
+| Tabela | Klucze | Zawiera |
 |---|---|---|
-| `load` | – | Zwraca pełne `data.types` (4 kategorie ze specami i perkami) |
-| `save_perk` | `{ categoryId, specId, perk }` | Upsert pojedynczego perka |
-| `delete_perk` | `{ categoryId, specId, perkId }` | Usuwa + czyści referencje w innych perkach |
-| `move_perk` | `{ categoryId, specId, perkId, x, y }` | Lekki update tylko pozycji (drag&drop) |
-| `save_spec` | `{ categoryId, spec }` | Upsert specjalizacji |
-| `delete_spec` | `{ categoryId, specId }` | Usuwa drzewko (kaskaduje na perki) |
-| `save_full` | `{ data: {...} }` | Bulk replace (używane przez Import JSON) |
-| `log` | `{ message, data }` | Wpis do `change_log` z frontu (opcjonalne) |
+| `categories` | PK: `id` | 4 wiersze (general/civ/crime/faction) z `levels[]` |
+| `specializations` | PK: `(id, category_id)`, FK→categories | drzewka perków |
+| `perks` | PK: `(id, spec_id, category_id)`, FK→specializations | pojedyncze perki |
 
-## Jak działa zapis w czasie rzeczywistym
+Wszystkie kolumny `requiredPerks` i `levels` są typu `JSONB` – pełna elastyczność,
+indeksowanie po polach JSON jeżeli kiedyś będzie potrzebne.
 
-1. Użytkownik zmienia coś w UI (np. opis perka).
-2. Frontend dodaje operację do kolejki `Sync` z kluczem `perk:cat:spec:id`.
-3. Po `350 ms` bezczynności kolejka jest wysyłana batchem.
-4. Jeżeli kilka zmian dotyczy tego samego perka – ostatnia wygrywa
-   (klucz w mapie się nadpisuje).
-5. W przypadku błędu sieci operacja zostaje w kolejce i jest ponawiana co 2 s.
-6. Przed zamknięciem karty `navigator.sendBeacon` wymusza flush.
+## Backup i przywracanie
 
-Wskaźnik w prawym dolnym rogu canvasu pokazuje aktualny stan:
-`Wczytywanie…` / `Zapisywanie…` / `Zapisano ✓` / `Offline` / `Błąd`.
+### Eksport
+Z poziomu UI: przycisk **Eksport** → JSON. Albo w Supabase Dashboard:
+**Database** → **Backups** (codzienne, w darmowym tier 7 dni wstecz).
 
-## Polling (multi-user)
+### Import
+Z UI: **Import** → wklej JSON. Wywołuje atomowy RPC `replace_all_data` –
+cała baza zastępowana w jednej transakcji.
 
-Co 5 s frontend odpytuje `load` i podmienia stan, ale tylko jeżeli:
-- karta jest aktywna (`document.hidden = false`),
-- nie ma niewysłanych zmian (priorytet ma własny zapis).
+## Limity Supabase Free Tier
 
-Aby wyłączyć: ustaw `pollIntervalMs: 0` w `APP_CONFIG`.
+- 500 MB bazy danych
+- 2 GB transferu / mies (z lichwą wystarczy dla edytora)
+- 200 jednoczesnych połączeń realtime
+- Projekt zostaje zatrzymany po 7 dniach bezczynności (wystarczy raz wejść)
 
-## Eksport do Lua (opcjonalnie, gotowy snippet)
+Dla tej aplikacji to ZNACZNIE więcej niż potrzeba.
 
-W bazie wszystkie pola odpowiadają strukturze `Config.Types`. Jeśli chcesz
-wygenerować plik `*_perks.lua` automatycznie, dodaj endpoint typu
-`?action=export_lua&categoryId=general` i wypluj zwykłym `echo`. Mogę dorzucić
-gotowy generator – daj znać.
+## Troubleshooting
 
-## Backup
+| Objaw | Diagnoza |
+|---|---|
+| W konsoli `supabase is not defined` | CDN się nie załadował – sprawdź sieć / adblocker |
+| `Brak konfiguracji Supabase` | Zostawiłeś placeholdery `TWOJ-PROJEKT` w `APP_CONFIG` |
+| `Invalid API key` w Network | Skopiowałeś niewłaściwy klucz – ma być **anon public**, nie service_role |
+| Status `Błąd: ...row-level security...` | RLS jest włączone, ale brakuje polityk – uruchom ponownie `supabase-setup.sql` |
+| Zmiany się zapisują, ale inni nie widzą natychmiast | Realtime nie włączony – sekcja w `supabase-setup.sql` powinna była to zrobić, sprawdź Dashboard → Database → Replication, czy `perks`, `specializations`, `categories` są tam zaznaczone |
+| Zmiany w ogóle się nie zapisują | Otwórz F12 → Network, znajdź request do `*.supabase.co/rest/v1/perks`, zobacz odpowiedź |
 
-Najprostszy:
-```bash
-mysqldump -u user -p prp_skilltree > backup.sql
-```
+## Dlaczego Supabase, a nie Firebase / Cloudflare D1 / inne
 
-Albo z poziomu UI: przycisk **Eksport** → kopia całego stanu w JSON.
-
-## Rozwiązywanie problemów
-
-- **„Server error: SQLSTATE[HY000] [1045]”** – złe hasło/user w `config.php`.
-- **„Server error: SQLSTATE[HY000] [2002]”** – zły host MySQL albo MySQL nie działa.
-- **„Unauthorized”** – token w `index.html` nie pasuje do tego w `config.php`.
-- **Brak połączenia, status „Offline”** – sprawdź czy `api.php` jest dostępne
-  pod tym samym hostem co `index.html`. Otwórz DevTools → Network.
-- **CORS** – jeżeli frontend i API są na różnych domenach, odkomentuj nagłówki
-  CORS w `api.php` (góra pliku).
-
-## Zmienne wewnątrz `index.html`
-
-W górze sekcji `<script>` masz `APP_CONFIG`:
-```js
-const APP_CONFIG = {
-  apiUrl: 'api.php',          // ścieżka do API
-  apiToken: '',                // pusty = bez tokenu
-  pollIntervalMs: 5000,        // co ile ms sprawdzać zmiany innych userów
-  saveDebounceMs: 350,         // debounce zapisu
-};
-```
+- **Supabase** = Postgres pod spodem. Znasz SQL z MariaDB – to działa identycznie.
+- Realtime przez WebSocket out of the box, bez polling.
+- Darmowy tier wystarcza z dużym zapasem.
+- Otwarty kod, można self-hostować jak będzie taka potrzeba.
+- JS SDK ma 30 KB, jeden script tag z CDN i działa.
