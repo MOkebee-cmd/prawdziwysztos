@@ -808,7 +808,7 @@
           <label>Level<input id="simLevel" type="number" min="1" value="1"></label>
           <label>Punkty<input id="simPoints" type="number" min="0" value="0"></label>
         </div>
-       <div class="toolbar-actions">
+        <div class="toolbar-actions">
           <button id="panModeBtn" class="icon-btn" title="Tryb przesuwania widoku (lewy klik = pan zamiast zaznaczania)">✋</button>
           <button id="connectBtn" class="icon-btn" title="Połącz perki">↔</button>
           <button id="addPerkBtn" class="tool-btn">+ Perk</button>
@@ -1580,7 +1580,6 @@ function renderToolbar(){
   }
   $('#connectBtn').classList.toggle('active', STATE.ui.connectMode);
   $('#panModeBtn').classList.toggle('active', STATE.ui.panMode);
-}
 }
 
 function renderCanvas(){
@@ -2516,6 +2515,7 @@ function init(){
   $('#panModeBtn').onclick = () => {
     STATE.ui.panMode = !STATE.ui.panMode;
     if (STATE.ui.panMode && STATE.ui.connectMode) {
+      // Wyłącz connect mode jeśli włączamy pan
       STATE.ui.connectMode = false;
       STATE.ui.connectFrom = null;
       $('#treeCanvas').classList.remove('connecting');
@@ -2525,7 +2525,7 @@ function init(){
     showToast(STATE.ui.panMode
       ? 'Tryb przesuwania: lewy klik = pan, Shift+klik = zaznaczanie'
       : 'Tryb zaznaczania: lewy klik = marquee, Alt+klik = pan');
-  };;
+  };
   $('#saveBtn').onclick = async () => {
     await Sync.flush();
     saveLocal(false); // toast "Zapisano"
