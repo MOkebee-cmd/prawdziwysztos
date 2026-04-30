@@ -443,9 +443,10 @@
     width: 100%;
     height: 100%;
     display: block;
-    cursor: grab;
+    cursor: crosshair;
   }
-  #treeCanvas.panning { cursor: grabbing; }
+  #treeCanvas.pan-mode { cursor: grab; }
+  #treeCanvas.panning { cursor: grabbing !important; }
   #treeCanvas.connecting { cursor: crosshair; }
 
   .canvas-status, .canvas-zoom-info {
@@ -807,7 +808,8 @@
           <label>Level<input id="simLevel" type="number" min="1" value="1"></label>
           <label>Punkty<input id="simPoints" type="number" min="0" value="0"></label>
         </div>
-        <div class="toolbar-actions">
+       <div class="toolbar-actions">
+          <button id="panModeBtn" class="icon-btn" title="Tryb przesuwania widoku (lewy klik = pan zamiast zaznaczania)">✋</button>
           <button id="connectBtn" class="icon-btn" title="Połącz perki">↔</button>
           <button id="addPerkBtn" class="tool-btn">+ Perk</button>
           <button id="duplicateBtn" class="icon-btn" title="Duplikuj">⧉</button>
@@ -1300,6 +1302,7 @@ const STATE = {
     selectedPerkIds: new Set(),      // multi-select – źródło prawdy dla canvas
     connectMode: false,
     connectFrom: null,
+    panMode: false,                  // false = lewy klik to marquee; true = lewy klik to pan
     pan: { x: 0, y: 0 },
     zoom: 1,
     search: '',
@@ -1576,6 +1579,8 @@ function renderToolbar(){
     meta.textContent = 'Wybierz drzewo z lewego panelu';
   }
   $('#connectBtn').classList.toggle('active', STATE.ui.connectMode);
+  $('#panModeBtn').classList.toggle('active', STATE.ui.panMode);
+}
 }
 
 function renderCanvas(){
@@ -2315,10 +2320,18 @@ function onCanvasMouseDown(e){
   if (e.target.closest('.edge-line')) return;
   if (e.button !== 0 && e.button !== 1) return;
 
-  // Lewy przycisk + nie connect-mode = marquee zamiast pan
-  // Środkowy przycisk = zawsze pan
-  // Lewy + Alt = pan (dla osób które wolą)
-  const wantMarquee = (e.button === 0) && !STATE.ui.connectMode && !e.altKey;
+  // Logika trybu:
+  // - panMode włączony  → lewy klik = pan; Shift+lewy = marquee
+  // - panMode wyłączony → lewy klik = marquee; Alt+lewy = pan
+  // - Środkowy przycisk = zawsze pan
+  // - W connect-mode lewy klik niczego nie robi (czekamy na klik perka)
+  if (STATE.ui.connectMode) return;
+
+  const isMiddle = e.button === 1;
+  const wantPan = isMiddle
+    || e.altKey
+    || (STATE.ui.panMode && !e.shiftKey && !e.ctrlKey && !e.metaKey);
+  const wantMarquee = !wantPan && e.button === 0;
 
   if (wantMarquee) {
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
@@ -2500,6 +2513,19 @@ function init(){
   $('#deleteBtn').onclick = deleteSelected;
   $('#autoLayoutBtn').onclick = autoLayout;
   $('#connectBtn').onclick = toggleConnectMode;
+  $('#panModeBtn').onclick = () => {
+    STATE.ui.panMode = !STATE.ui.panMode;
+    if (STATE.ui.panMode && STATE.ui.connectMode) {
+      STATE.ui.connectMode = false;
+      STATE.ui.connectFrom = null;
+      $('#treeCanvas').classList.remove('connecting');
+    }
+    $('#treeCanvas').classList.toggle('pan-mode', STATE.ui.panMode);
+    renderToolbar();
+    showToast(STATE.ui.panMode
+      ? 'Tryb przesuwania: lewy klik = pan, Shift+klik = zaznaczanie'
+      : 'Tryb zaznaczania: lewy klik = marquee, Alt+klik = pan');
+  };;
   $('#saveBtn').onclick = async () => {
     await Sync.flush();
     saveLocal(false); // toast "Zapisano"
