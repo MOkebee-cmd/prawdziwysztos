@@ -103,6 +103,101 @@
   }
   .brand h1 { font-size: 14px; font-weight: 600; }
   .brand p { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .brand-text { flex: 1; min-width: 0; }
+  .logout-btn {
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--text-3);
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    transition: all 0.12s ease;
+  }
+  .logout-btn:hover { color: var(--acc-danger); border-color: #6b3a3a; background: rgba(184,120,120,0.05); }
+
+  /* ===== Ekran logowania ===== */
+  .auth-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-0);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    background-image:
+      radial-gradient(circle at 30% 20%, rgba(170,155,110,0.04), transparent 50%),
+      radial-gradient(circle at 70% 80%, rgba(125,138,120,0.03), transparent 50%);
+  }
+  .auth-screen.show { display: flex; }
+  .auth-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--bg-1);
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-lg);
+    padding: 36px 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .auth-brand h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+  .auth-tagline {
+    font-size: 12.5px;
+    color: var(--text-3);
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+  .auth-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .auth-fields input {
+    padding: 11px 14px;
+    font-size: 13.5px;
+  }
+  .auth-fields button {
+    margin-top: 6px;
+    padding: 11px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+  }
+  .auth-fields button:disabled {
+    opacity: 0.55;
+    cursor: progress;
+  }
+  .auth-error {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: rgba(184,120,120,0.08);
+    border: 1px solid #6b3a3a;
+    border-radius: var(--radius-sm);
+    color: var(--acc-danger);
+    font-size: 12px;
+    line-height: 1.5;
+    display: none;
+  }
+  .auth-error.show { display: block; }
+  .auth-loading {
+    text-align: center;
+    color: var(--text-3);
+    font-size: 12px;
+    margin-top: 18px;
+  }
 
   .cat-tabs {
     padding: 14px 14px 8px;
@@ -636,14 +731,32 @@
 </style>
 </head>
 <body>
-  <div class="app" id="app">
+  <!-- Ekran logowania – widoczny do momentu zalogowania -->
+  <div class="auth-screen show" id="authScreen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="brand-mark">ST</span>
+        <h1>Skilltree Studio</h1>
+      </div>
+      <p class="auth-tagline">Zaloguj się, żeby edytować drzewka.</p>
+      <div class="auth-fields">
+        <input type="email" id="authEmail" placeholder="email" autocomplete="username" autofocus>
+        <input type="password" id="authPassword" placeholder="hasło" autocomplete="current-password">
+        <button class="tool-btn primary" id="authLoginBtn">Zaloguj się</button>
+      </div>
+      <div class="auth-error" id="authError"></div>
+    </div>
+  </div>
+
+  <div class="app" id="app" style="display:none;">
     <aside class="left-panel">
       <div class="brand">
         <span class="brand-mark">ST</span>
-        <div>
+        <div class="brand-text">
           <h1>Skilltree Studio</h1>
           <p>Edytor drzewek perków</p>
         </div>
+        <button class="logout-btn" id="logoutBtn" title="Wyloguj">⏻</button>
       </div>
       <div class="cat-tabs" id="catTabs"></div>
       <div class="search">
@@ -1099,7 +1212,7 @@ const Sync = (() => {
     pending.clear();
   }
 
-  return { call, queue, flush, loadAll, startPolling, stopPolling, flushOnUnload, onStatus };
+  return { call, queue, flush, loadAll, startPolling, stopPolling, flushOnUnload, onStatus, getClient: client };
 })();
 
 
@@ -2149,12 +2262,123 @@ function init(){
   window.addEventListener('beforeunload', () => Sync.flushOnUnload());
   window.addEventListener('pagehide', () => Sync.flushOnUnload());
 
-  // ===== Wczytaj stan z serwera =====
-  renderAll(); // najpierw render z cachu lokalnego, żeby UI nie było puste
+  // ===== Auth: handlery ekranu logowania + przycisku wyloguj =====
+  const emailInput = $('#authEmail');
+  const passwordInput = $('#authPassword');
+  const loginBtn = $('#authLoginBtn');
+  const errorBox = $('#authError');
+
+  function showAuthError(msg){
+    errorBox.textContent = msg;
+    errorBox.classList.add('show');
+  }
+  function clearAuthError(){
+    errorBox.classList.remove('show');
+  }
+
+  async function doLogin(){
+    clearAuthError();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) { showAuthError('Podaj email i hasło.'); return; }
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Logowanie…';
+    try {
+      const sb = Sync.getClient();
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        // Częste komunikaty: "Invalid login credentials"
+        if (/invalid login/i.test(error.message)) {
+          showAuthError('Nieprawidłowy email lub hasło.');
+        } else if (/email not confirmed/i.test(error.message)) {
+          showAuthError('Konto nie jest potwierdzone. Sprawdź skrzynkę albo wyłącz wymóg potwierdzenia w Supabase.');
+        } else {
+          showAuthError(error.message);
+        }
+        return;
+      }
+      // Sukces – pokaż edytor
+      hideAuthScreen();
+      bootApp();
+    } catch (e) {
+      showAuthError('Błąd połączenia: ' + e.message);
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Zaloguj się';
+    }
+  }
+
+  loginBtn.onclick = doLogin;
+  passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordInput.focus(); });
+  emailInput.addEventListener('input', clearAuthError);
+  passwordInput.addEventListener('input', clearAuthError);
+
+  $('#logoutBtn').onclick = async () => {
+    if (!confirm('Wylogować się?')) return;
+    try {
+      const sb = Sync.getClient();
+      await sb.auth.signOut();
+    } catch (e) {}
+    location.reload();
+  };
+
+  // Auto-wyloguj jeżeli sesja wygasła w innej karcie
+  try {
+    const sb = Sync.getClient();
+    sb.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        Sync.stopPolling();
+        location.reload();
+      }
+    });
+  } catch (e) { /* config nie gotowy – obsłużymy w checkAuth */ }
+
+  // ===== Sprawdź sesję na starcie =====
+  checkAuth();
+}
+
+function showAuthScreen(){
+  $('#authScreen').classList.add('show');
+  $('#app').style.display = 'none';
+}
+
+function hideAuthScreen(){
+  $('#authScreen').classList.remove('show');
+  $('#app').style.display = '';
+}
+
+async function checkAuth(){
+  // Jeżeli config Supabase nie ustawiony – zostaw login screen, pokaż błąd na canvasie
+  let sb;
+  try {
+    sb = Sync.getClient();
+  } catch (e) {
+    $('#authError').textContent = e.message;
+    $('#authError').classList.add('show');
+    return;
+  }
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      hideAuthScreen();
+      bootApp();
+    } else {
+      showAuthScreen();
+    }
+  } catch (e) {
+    showAuthScreen();
+    $('#authError').textContent = 'Błąd Supabase: ' + e.message;
+    $('#authError').classList.add('show');
+  }
+}
+
+function bootApp(){
+  // Wczytaj stan z serwera, włącz realtime
+  renderAll(); // najpierw render z cachu lokalnego
   Sync.loadAll().then(data => {
     if (data && data.types) {
       STATE.data = data;
-      // Sprawdź czy aktywny spec dalej istnieje
       const activeType = STATE.data.types[STATE.ui.activeCategory];
       if (!activeType || !activeType.specializations[STATE.ui.activeSpecId]) {
         STATE.ui.activeSpecId = activeType ? Object.keys(activeType.specializations)[0] || null : null;
@@ -2162,16 +2386,12 @@ function init(){
       }
       renderAll();
     }
-    // Włącz polling dopiero po pierwszym sukcesie
     Sync.startPolling((newData) => {
       if (!newData || !newData.types) return;
-      // Nie nadpisuj jeżeli user właśnie coś zmienia (otwarty inspector + niezapisane zmiany)
-      // Sync sam dba o priorytet, ale dodatkowo zapisz selekcję
       const selPerk = STATE.ui.selectedPerkId;
       const selSpec = STATE.ui.activeSpecId;
       const selCat  = STATE.ui.activeCategory;
       STATE.data = newData;
-      // Walidacja zachowania selekcji
       const t = STATE.data.types[selCat];
       if (!t || !t.specializations[selSpec]) {
         STATE.ui.activeSpecId = t ? Object.keys(t.specializations)[0] || null : null;
@@ -2182,8 +2402,12 @@ function init(){
       renderAll();
     });
   }).catch(e => {
-    showToast('Nie udało się połączyć z serwerem (offline)', 'error');
+    showToast('Nie udało się połączyć z serwerem: ' + e.message, 'error');
     console.error(e);
+    // Jeżeli błąd RLS – sesja prawdopodobnie wygasła
+    if (/jwt|expired|unauth/i.test(e.message || '')) {
+      setTimeout(() => location.reload(), 1500);
+    }
   });
 }
 
