@@ -749,6 +749,110 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.error { border-color: #6b3a3a; color: var(--acc-danger); }
 
+  /* ===== Changelog ===== */
+  .modal-wide { max-width: 620px; }
+  .changelog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .changelog-header h3 { margin: 0; }
+  .changelog-header-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .changelog-header-actions .tool-btn {
+    padding: 6px 10px;
+    font-size: 11.5px;
+  }
+  .changelog-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 4px -4px 0;
+    padding: 4px;
+  }
+  .changelog-loading, .changelog-empty {
+    text-align: center;
+    color: var(--text-3);
+    font-size: 12.5px;
+    padding: 30px 16px;
+    line-height: 1.6;
+  }
+  .changelog-item {
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    transition: border-color 0.12s;
+  }
+  .changelog-item:hover { border-color: var(--line-2); }
+  .changelog-item.changelog-manual {
+    border-left: 3px solid var(--acc-points);
+  }
+  .changelog-item.changelog-auto {
+    border-left: 3px solid var(--line-3);
+  }
+  .changelog-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .changelog-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  .changelog-kind {
+    font-size: 9.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+  }
+  .changelog-kind.kind-manual {
+    background: rgba(170,155,110,0.15);
+    color: var(--acc-points);
+  }
+  .changelog-kind.kind-auto {
+    background: var(--bg-3);
+    color: var(--text-3);
+  }
+  .changelog-label {
+    font-size: 12.5px;
+    color: var(--text-1);
+    margin: 4px 0;
+    line-height: 1.4;
+  }
+  .changelog-summary {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+  }
+  .changelog-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .changelog-actions .tool-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  .changelog-actions .icon-btn-sm {
+    margin-left: auto;
+  }
+
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
@@ -816,6 +920,9 @@
           <button id="deleteBtn" class="icon-btn danger" title="Usuń (Delete)">⌫</button>
           <button id="autoLayoutBtn" class="tool-btn">Auto układ</button>
           <button id="saveBtn" class="tool-btn primary">Zapisz</button>
+          <button id="snapshotBtn" class="tool-btn" title="Zapisz aktualną wersję jako snapshot">📌 Wersja</button>
+          <button id="changelogBtn" class="tool-btn" title="Historia wersji">🕓 Historia</button>
+          <button id="luaBtn" class="tool-btn" title="Pobierz Config.Types jako plik Lua">⬇ Lua</button>
           <button id="exportBtn" class="tool-btn">Eksport</button>
           <button id="importBtn" class="tool-btn">Import</button>
         </div>
@@ -902,6 +1009,26 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- Modal: panel changelog/historia wersji -->
+  <div class="modal-bd" id="changelogModal">
+    <div class="modal modal-wide">
+      <div class="changelog-header">
+        <h3>Historia wersji</h3>
+        <div class="changelog-header-actions">
+          <button class="tool-btn" id="changelogManualBtn">📌 Zapisz wersję teraz</button>
+          <button class="tool-btn" id="changelogLuaCurrentBtn">⬇ Pobierz aktualne jako .lua</button>
+        </div>
+      </div>
+      <p class="help-tip" style="margin-bottom: 14px;">
+        Snapshoty z bieżącego stanu bazy. Auto-snapshoty (co godzinę) trzymane są przez ostatnie 24h, ręczne – do 50 najnowszych.
+      </p>
+      <div class="changelog-list" id="changelogList"></div>
+      <div class="modal-actions">
+        <button class="tool-btn" data-action="close-changelog">Zamknij</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 'use strict';
@@ -2444,6 +2571,541 @@ function openImportModal(){
   setTimeout(() => $('#ioModalArea').focus(), 50);
 }
 
+// ============= EKSPORT DO LUA =============
+
+function escapeLuaString(s){
+  if (s == null) return '';
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
+}
+
+function escapeJsonString(s){
+  return JSON.stringify(String(s == null ? '' : s));
+}
+
+// Czy string wygląda jak istniejący klucz locale (UPPERCASE_SNAKE)
+function looksLikeLocaleKey(s){
+  if (!s) return false;
+  return /^[A-Z][A-Z0-9_]{2,}$/.test(String(s).trim());
+}
+
+// Generuj klucz locale z dowolnego tekstu
+// "Long Distance" → "LONG_DISTANCE", "Już za 5 min!" → "JUZ_ZA_5_MIN"
+function makeLocaleKey(s, prefix){
+  let base = String(s || '')
+    .toUpperCase()
+    .replace(/[ĄĆĘŁŃÓŚŹŻ]/g, c => ({'Ą':'A','Ć':'C','Ę':'E','Ł':'L','Ń':'N','Ó':'O','Ś':'S','Ź':'Z','Ż':'Z'}[c] || c))
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60);
+  if (!base) base = 'KEY';
+  return (prefix || '') + base;
+}
+
+// Builder fragmentu Lua – nie używamy JSON-podobnego luaValue dla głównej struktury,
+// żeby otrzymać format bardzo zbliżony do trucker_perks.lua (locale calls inline).
+
+function indentStr(level){
+  return '    '.repeat(level);
+}
+
+// Konwertuje wartość JS na literał Lua (dla efektów/modyfikatorów)
+function luaValue(v){
+  if (v == null) return 'nil';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (typeof v === 'number') {
+    if (!isFinite(v)) return 'nil';
+    return String(v);
+  }
+  if (typeof v === 'string') return '"' + escapeLuaString(v) + '"';
+  if (Array.isArray(v)) {
+    if (v.length === 0) return '{}';
+    return '{ ' + v.map(luaValue).join(', ') + ' }';
+  }
+  if (typeof v === 'object') {
+    const keys = Object.keys(v);
+    if (keys.length === 0) return '{}';
+    const items = keys.map(k => {
+      const bareKey = /^[A-Za-z_][A-Za-z0-9_]*$/.test(k);
+      const keyStr = bareKey ? k : '["' + escapeLuaString(k) + '"]';
+      return keyStr + ' = ' + luaValue(v[k]);
+    });
+    return '{ ' + items.join(', ') + ' }';
+  }
+  return 'nil';
+}
+
+// Główna funkcja. Buduje { lua, locale } – obie struktury naraz.
+function dataToLuaWithLocale(data, options){
+  options = options || {};
+  const onlyCategoryId = options.categoryId || null;
+  const localeMap = {};   // KEY → "wartość"
+
+  // Pomocnik: zarejestruj label/desc i zwróć Lua expression `locale("KEY")`
+  // jeżeli tekst już wygląda jak klucz locale, użyj go bezpośrednio (nie dodawaj do mapy)
+  function registerText(text, suggestedKey){
+    if (text == null) text = '';
+    text = String(text);
+    if (looksLikeLocaleKey(text)) {
+      // Już jest kluczem – nie nadpisujemy w locale.json (może istnieć)
+      return 'locale("' + text + '")';
+    }
+    const key = suggestedKey;
+    // Jeżeli klucz już zarejestrowany z inną wartością, nie nadpisuj – dorzuć sufiks
+    let finalKey = key;
+    let suffix = 2;
+    while (localeMap[finalKey] != null && localeMap[finalKey] !== text) {
+      finalKey = key + '_' + suffix;
+      suffix++;
+    }
+    localeMap[finalKey] = text;
+    return 'locale("' + finalKey + '")';
+  }
+
+  const lines = [];
+  lines.push('-- =====================================================================');
+  lines.push('-- prp-perks Config.Types  (wygenerowane przez Skilltree Studio)');
+  lines.push('-- ' + new Date().toLocaleString('pl-PL'));
+  lines.push('-- =====================================================================');
+  lines.push('');
+  lines.push('Config = Config or {}');
+  lines.push('Config.Types = Config.Types or {}');
+  lines.push('');
+
+  const cats = data.types || {};
+  const order = ['general', 'civ', 'crime', 'faction'];
+
+  // Mapowanie ID kategorii → klucz w Config.Types i nazwa zmiennej Cfg
+  const cfgKeyMap = {
+    general: { typeKey: 'character', cfgVar: 'CharacterCfg', localePrefix: 'CHARACTER_' },
+    civ:     { typeKey: 'civ',       cfgVar: 'CivCfg',       localePrefix: 'CIV_' },
+    crime:   { typeKey: 'crime',     cfgVar: 'CrimeCfg',     localePrefix: 'CRIME_' },
+    faction: { typeKey: 'trucker',   cfgVar: 'TruckerCfg',   localePrefix: 'TRUCKER_' },
+  };
+
+  for (const catId of order) {
+    if (onlyCategoryId && catId !== onlyCategoryId) continue;
+    const cat = cats[catId];
+    if (!cat) continue;
+    const cfg = cfgKeyMap[catId];
+    if (!cfg) continue;
+
+    const specs = cat.specializations || {};
+    if (Object.keys(specs).length === 0 && !onlyCategoryId) {
+      // Pomiń puste kategorie kiedy eksportujemy "wszystko" - nie zaśmiecaj
+      continue;
+    }
+
+    lines.push('-- ============= ' + (cat.name || catId).toUpperCase() + ' =============');
+    lines.push('Config.' + cfg.cfgVar + ' = {');
+
+    // levels
+    const levels = cat.levels || [];
+    if (levels.length > 0) {
+      lines.push(indentStr(1) + 'levels = {');
+      levels.forEach((lvl, idx) => {
+        const value = lvl.value != null ? lvl.value : 1000 * (idx + 1);
+        const perkPoints = lvl.perkPoints != null ? lvl.perkPoints : 1;
+        const labelExpr = 'locale("SHOW_LEVEL", "' + (idx + 1) + '")';
+        lines.push(indentStr(2) + '{ label = ' + labelExpr + ', value = ' + value + ', perkPoints = ' + perkPoints + ' },');
+      });
+      lines.push(indentStr(1) + '},');
+    }
+
+    // repLimit – stała wartość na bazie ostatniego levela
+    const lastLevel = levels.length > 0 ? levels[levels.length - 1] : null;
+    const repValue = lastLevel ? Math.max(1000, Math.floor((lastLevel.value || 50000) / 50)) : 1000;
+    lines.push(indentStr(1) + 'repLimit = {');
+    lines.push(indentStr(2) + 'reputation = ' + repValue + ',');
+    lines.push(indentStr(2) + 'time = 24 * 60 * 60');
+    lines.push(indentStr(1) + '},');
+
+    // specializations
+    lines.push(indentStr(1) + 'specializations = {');
+    for (const [sid, spec] of Object.entries(specs)) {
+      const sidUpper = sid.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+      const catPrefixTrim = cfg.localePrefix.replace(/_$/, '');
+      // Jeżeli prefix kategorii jest identyczny jak nazwa speca (np. TRUCKER + trucker)
+      // to nie powtarzamy go dwa razy
+      const specPrefix = (catPrefixTrim === sidUpper)
+        ? cfg.localePrefix
+        : cfg.localePrefix + sidUpper + '_';
+      const specBase = specPrefix.replace(/_$/, '');
+
+      const specLabelExpr = registerText(
+        spec.label || sid,
+        specBase + '_SPEC_LABEL'
+      );
+      const specDescExpr = registerText(
+        spec.desc || '',
+        specBase + '_SPEC_DESC'
+      );
+
+      lines.push(indentStr(2) + '["' + escapeLuaString(sid) + '"] = {');
+      lines.push(indentStr(3) + 'label = ' + specLabelExpr + ',');
+      lines.push(indentStr(3) + 'color = "' + escapeLuaString(spec.color || '#ffffff') + '",');
+      lines.push(indentStr(3) + 'btnColor = "' + escapeLuaString(spec.btnColor || '#ffffff1A') + '",');
+      lines.push(indentStr(3) + 'desc = ' + specDescExpr + ',');
+      lines.push(indentStr(3) + 'perks = {');
+
+      const perks = spec.perks || {};
+      for (const [pid, perk] of Object.entries(perks)) {
+        const perkLabelKey = specPrefix + 'PERK_' + pid.toUpperCase().replace(/[^A-Z0-9]+/g, '_') + '_LABEL';
+        const perkLabelExpr = registerText(perk.label || pid, perkLabelKey);
+
+        lines.push(indentStr(4) + '["' + escapeLuaString(pid) + '"] = {');
+        lines.push(indentStr(5) + 'label = ' + perkLabelExpr + ',');
+        lines.push(indentStr(5) + 'image = "' + escapeLuaString(perk.image || pid) + '",');
+        lines.push(indentStr(5) + 'requiredLevel = ' + (perk.requiredLevel || 1) + ',');
+
+        // requiredPerks – tylko jeżeli niepuste
+        const reqPerks = perk.requiredPerks || {};
+        const reqEntries = Object.entries(reqPerks);
+        if (reqEntries.length > 0) {
+          lines.push(indentStr(5) + 'requiredPerks = {');
+          reqEntries.forEach(([reqId, reqLvl]) => {
+            lines.push(indentStr(6) + '["' + escapeLuaString(reqId) + '"] = ' + (reqLvl || 1) + ',');
+          });
+          lines.push(indentStr(5) + '},');
+        }
+
+        // levels (perka)
+        const perkLevels = (perk.levels && perk.levels.length > 0) ? perk.levels : [{ desc: '' }];
+        lines.push(indentStr(5) + 'levels = {');
+        perkLevels.forEach((lvl, idx) => {
+          const descKey = specPrefix + 'PERK_' + pid.toUpperCase().replace(/[^A-Z0-9]+/g, '_') +
+                          (perkLevels.length > 1 ? '_DESC_' + (idx + 1) : '_DESC');
+          const descExpr = registerText(lvl.desc || '', descKey);
+
+          // Pozostałe klucze (modyfikatory)
+          const extras = Object.entries(lvl).filter(([k]) => k !== 'desc');
+          if (extras.length === 0) {
+            lines.push(indentStr(6) + '{ desc = ' + descExpr + ' },');
+          } else {
+            const parts = ['desc = ' + descExpr];
+            extras.forEach(([k, v]) => {
+              const bareKey = /^[A-Za-z_][A-Za-z0-9_]*$/.test(k);
+              const keyStr = bareKey ? k : '["' + escapeLuaString(k) + '"]';
+              parts.push(keyStr + ' = ' + luaValue(v));
+            });
+            lines.push(indentStr(6) + '{ ' + parts.join(', ') + ' },');
+          }
+        });
+        lines.push(indentStr(5) + '},');
+
+        lines.push(indentStr(4) + '},');
+      }
+
+      lines.push(indentStr(3) + '}');
+      lines.push(indentStr(2) + '},');
+    }
+    lines.push(indentStr(1) + '}');
+    lines.push('}');
+    lines.push('');
+    lines.push('Config.Types["' + cfg.typeKey + '"] = Config.' + cfg.cfgVar);
+    lines.push('');
+  }
+
+  return {
+    lua: lines.join('\n'),
+    locale: localeMap,
+  };
+}
+
+// Generator pliku locale (en.json) na podstawie zarejestrowanych kluczy.
+// Nie nadpisuje wartości ze wzorca (en.json od użytkownika) jeżeli go nie mamy.
+function localeMapToJson(localeMap){
+  // Posortuj klucze alfabetycznie + dodaj kilka standardowych zawsze potrzebnych
+  const standard = {
+    PERKS_MENU_LABEL: 'Perks Menu',
+    SHOW_LEVEL: 'Level %s',
+  };
+  const merged = Object.assign({}, standard, localeMap);
+  const sortedKeys = Object.keys(merged).sort();
+  const lines = ['{'];
+  sortedKeys.forEach((k, i) => {
+    const comma = i < sortedKeys.length - 1 ? ',' : '';
+    lines.push('    ' + escapeJsonString(k) + ': ' + escapeJsonString(merged[k]) + comma);
+  });
+  lines.push('}');
+  return lines.join('\n');
+}
+
+// Zachowana dla wstecznej kompatybilności (snapshoty wołają dataToLua)
+function dataToLua(data, options){
+  return dataToLuaWithLocale(data, options).lua;
+}
+
+// Pobierz plik (text → download)
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], { type: (mime || 'text/plain') + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function timestampForFile(){
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes());
+}
+
+// Eksport: pobiera DWA pliki – .lua + en.json
+function exportLua(categoryId){
+  const result = dataToLuaWithLocale(STATE.data, { categoryId: categoryId || null });
+  const stamp = timestampForFile();
+  const suffix = categoryId ? '_' + categoryId : '_all';
+  downloadFile('prp-perks' + suffix + '_' + stamp + '.lua', result.lua, 'text/x-lua');
+  // Krótkie opóźnienie żeby przeglądarka zdążyła odpalić drugi download
+  setTimeout(() => {
+    downloadFile('en' + suffix + '_' + stamp + '.json', localeMapToJson(result.locale), 'application/json');
+  }, 250);
+  showToast(categoryId
+    ? 'Pobrano .lua + en.json dla "' + categoryId + '"'
+    : 'Pobrano .lua + en.json (wszystkie kategorie)');
+}
+
+// ============= SNAPSHOTS / CHANGELOG =============
+
+const Snapshots = (() => {
+  let listCache = [];
+  let lastAutoTime = 0;
+
+  async function take(kind, label){
+    try {
+      const sb = Sync.getClient();
+      const { data, error } = await sb.rpc('create_snapshot', {
+        p_kind: kind || 'manual',
+        p_label: label || null,
+        p_client: CLIENT_ID,
+      });
+      if (error) throw new Error(error.message);
+      if (kind === 'auto') {
+        // Po cogodzinnym snapshot wyczyść stare
+        try { await sb.rpc('prune_snapshots', { keep_auto: 24, keep_manual: 50 }); } catch(e) {}
+      }
+      return data;
+    } catch (e) {
+      console.warn('[Snapshots] take failed:', e.message);
+      throw e;
+    }
+  }
+
+  async function list(){
+    try {
+      const sb = Sync.getClient();
+      const { data, error } = await sb.from('snapshots')
+        .select('id, created_at, kind, label, summary, created_by')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw new Error(error.message);
+      listCache = data || [];
+      return listCache;
+    } catch (e) {
+      console.warn('[Snapshots] list failed:', e.message);
+      return [];
+    }
+  }
+
+  async function load(snapshotId){
+    const sb = Sync.getClient();
+    const { data, error } = await sb.from('snapshots')
+      .select('*').eq('id', snapshotId).single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async function remove(snapshotId){
+    const sb = Sync.getClient();
+    const { error } = await sb.from('snapshots').delete().eq('id', snapshotId);
+    if (error) throw new Error(error.message);
+  }
+
+  // Co godzinę robimy auto-snapshot. Sprawdzamy czas ostatniego z bazy żeby
+  // uniknąć duplikatów po odświeżeniu strony.
+  async function maybeAutoSnapshot(){
+    try {
+      const sb = Sync.getClient();
+      const { data, error } = await sb.from('snapshots')
+        .select('created_at')
+        .eq('kind', 'auto')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (error) throw new Error(error.message);
+      const lastTs = (data && data[0]) ? new Date(data[0].created_at).getTime() : 0;
+      const now = Date.now();
+      const ONE_HOUR = 60 * 60 * 1000;
+      if (now - lastTs >= ONE_HOUR) {
+        await take('auto', null);
+        lastAutoTime = now;
+        return true;
+      }
+      lastAutoTime = lastTs;
+      return false;
+    } catch (e) {
+      console.warn('[Snapshots] auto check failed:', e.message);
+      return false;
+    }
+  }
+
+  function startAutoTimer(){
+    // Sprawdź od razu po starcie
+    maybeAutoSnapshot();
+    // Potem co 5 minut – jeżeli minęła pełna godzina od ostatniego, weź snapshot
+    setInterval(maybeAutoSnapshot, 5 * 60 * 1000);
+  }
+
+  return { take, list, load, remove, maybeAutoSnapshot, startAutoTimer, getCache: () => listCache };
+})();
+
+// ============= UI: PANEL CHANGELOG =============
+
+function openChangelogModal(){
+  $('#changelogModal').classList.add('show');
+  refreshChangelogList();
+}
+function closeChangelogModal(){
+  $('#changelogModal').classList.remove('show');
+}
+
+async function refreshChangelogList(){
+  const wrap = $('#changelogList');
+  wrap.innerHTML = '<div class="changelog-loading">Wczytywanie…</div>';
+  const items = await Snapshots.list();
+  if (!items || items.length === 0) {
+    wrap.innerHTML = '<div class="changelog-empty">Brak zapisanych wersji.<br>Pierwsza wersja będzie utworzona automatycznie po godzinie pracy.</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  items.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'changelog-item changelog-' + it.kind;
+    const dt = new Date(it.created_at);
+    const dateStr = dt.toLocaleString('pl-PL');
+    const summary = it.summary || {};
+    const parts = [];
+    if (summary.n_perks != null) parts.push(summary.n_perks + ' perków');
+    if (summary.n_specs != null) parts.push(summary.n_specs + ' drzew');
+    const summaryStr = parts.join(' · ');
+
+    card.innerHTML =
+      '<div class="changelog-meta">' +
+        '<div class="changelog-time">' + escapeHtml(dateStr) + '</div>' +
+        '<span class="changelog-kind kind-' + it.kind + '">' + (it.kind === 'auto' ? 'auto' : 'ręczny') + '</span>' +
+      '</div>' +
+      (it.label ? '<div class="changelog-label">' + escapeHtml(it.label) + '</div>' : '') +
+      '<div class="changelog-summary">' + escapeHtml(summaryStr) + '</div>' +
+      '<div class="changelog-actions">' +
+        '<button class="tool-btn" data-snap-restore="' + it.id + '">Przywróć</button>' +
+        '<button class="tool-btn" data-snap-lua="' + it.id + '">Pobierz .lua</button>' +
+        '<button class="tool-btn" data-snap-json="' + it.id + '">.json</button>' +
+        '<button class="icon-btn-sm danger" data-snap-del="' + it.id + '" title="Usuń">⌫</button>' +
+      '</div>';
+    wrap.appendChild(card);
+  });
+
+  // Bind actions
+  wrap.querySelectorAll('[data-snap-restore]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.snapRestore;
+      if (!confirm('Przywrócić tę wersję? Zastąpi WSZYSTKIE bieżące dane.')) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const snap = await Snapshots.load(id);
+        if (!snap || !snap.data) throw new Error('Snapshot pusty');
+        // Wyślij na serwer (atomowy replace_all_data)
+        await Sync.call('save_full', { data: snap.data });
+        // Przeładuj lokalnie z serwera
+        const fresh = await Sync.call('load', {});
+        if (fresh && fresh.data) STATE.data = fresh.data;
+        clearSelection();
+        closeChangelogModal();
+        renderAll();
+        showToast('Przywrócono wersję z ' + new Date(snap.created_at).toLocaleString('pl-PL'));
+      } catch (e) {
+        showToast('Błąd: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Przywróć';
+      }
+    };
+  });
+  wrap.querySelectorAll('[data-snap-lua]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.snapLua;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const snap = await Snapshots.load(id);
+        if (!snap || !snap.data) throw new Error('Snapshot pusty');
+        const result = dataToLuaWithLocale(snap.data);
+        const dt = new Date(snap.created_at);
+        const pad = (n) => String(n).padStart(2, '0');
+        const stamp = dt.getFullYear() + pad(dt.getMonth()+1) + pad(dt.getDate()) + '_' + pad(dt.getHours()) + pad(dt.getMinutes());
+        downloadFile('prp-perks_snapshot_' + stamp + '.lua', result.lua, 'text/x-lua');
+        setTimeout(() => {
+          downloadFile('en_snapshot_' + stamp + '.json', localeMapToJson(result.locale), 'application/json');
+        }, 250);
+      } catch (e) {
+        showToast('Błąd: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Pobierz .lua';
+      }
+    };
+  });
+  wrap.querySelectorAll('[data-snap-json]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.snapJson;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const snap = await Snapshots.load(id);
+        if (!snap || !snap.data) throw new Error('Snapshot pusty');
+        const json = JSON.stringify(snap.data, null, 2);
+        const dt = new Date(snap.created_at);
+        const pad = (n) => String(n).padStart(2, '0');
+        const stamp = dt.getFullYear() + pad(dt.getMonth()+1) + pad(dt.getDate()) + '_' + pad(dt.getHours()) + pad(dt.getMinutes());
+        downloadFile('prp-perks_snapshot_' + stamp + '.json', json, 'application/json');
+      } catch (e) {
+        showToast('Błąd: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = '.json';
+      }
+    };
+  });
+  wrap.querySelectorAll('[data-snap-del]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.snapDel;
+      if (!confirm('Usunąć ten snapshot?')) return;
+      try {
+        await Snapshots.remove(id);
+        refreshChangelogList();
+      } catch (e) {
+        showToast('Błąd: ' + e.message, 'error');
+      }
+    };
+  });
+}
+
+async function takeManualSnapshot(){
+  const label = prompt('Opis tej wersji (opcjonalnie, np. "przed dużą zmianą"):');
+  if (label === null) return; // anulowano
+  // Najpierw flush kolejki, żeby snapshot zawierał najnowszy stan
+  await Sync.flush();
+  try {
+    await Snapshots.take('manual', label.trim() || null);
+    showToast('Zapisano wersję');
+    if ($('#changelogModal').classList.contains('show')) refreshChangelogList();
+  } catch (e) {
+    showToast('Błąd zapisu wersji: ' + e.message, 'error');
+  }
+}
+
 function applyImport(){
   try {
     const obj = JSON.parse($('#ioModalArea').value);
@@ -2532,6 +3194,11 @@ function init(){
   };
   $('#exportBtn').onclick = openExportModal;
   $('#importBtn').onclick = openImportModal;
+  $('#luaBtn').onclick = () => exportLua(null);
+  $('#snapshotBtn').onclick = takeManualSnapshot;
+  $('#changelogBtn').onclick = openChangelogModal;
+  $('#changelogManualBtn').onclick = takeManualSnapshot;
+  $('#changelogLuaCurrentBtn').onclick = () => exportLua(null);
 
   $('#searchInput').oninput = (e) => {
     STATE.ui.search = e.target.value;
@@ -2551,9 +3218,11 @@ function init(){
     if (a === 'close-io') closeIoModal();
     if (a === 'copy-io') copyExport();
     if (a === 'apply-io') applyImport();
+    if (a === 'close-changelog') closeChangelogModal();
   });
   $('#specModal').onclick = (e) => { if (e.target.id === 'specModal') closeSpecModal(); };
   $('#ioModal').onclick = (e) => { if (e.target.id === 'ioModal') closeIoModal(); };
+  $('#changelogModal').onclick = (e) => { if (e.target.id === 'changelogModal') closeChangelogModal(); };
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, select')) return;
@@ -2563,7 +3232,7 @@ function init(){
     } else if (e.key === 'Escape') {
       if (STATE.ui.connectMode) toggleConnectMode();
       else if (STATE.ui.selectedPerkIds.size > 0) { clearSelection(); renderAll(); }
-      else { closeSpecModal(); closeIoModal(); }
+      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); }
     } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicatePerk();
@@ -2735,6 +3404,8 @@ function bootApp(){
       }
       renderAll();
     });
+    // Auto-snapshoty co godzinę
+    Snapshots.startAutoTimer();
   }).catch(e => {
     showToast('Nie udało się połączyć z serwerem: ' + e.message, 'error');
     console.error(e);
