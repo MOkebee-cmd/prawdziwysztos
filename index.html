@@ -784,8 +784,8 @@ function defaultLevels(count){
 //   - Project URL  →  supabaseUrl
 //   - anon public key  →  supabaseAnonKey
 const APP_CONFIG = {
-  supabaseUrl:     'https://TWOJ-PROJEKT.supabase.co',
-  supabaseAnonKey: 'TWOJ-ANON-KEY',
+  supabaseUrl:     'https://pldahhskaqjeatvahkef.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsZGFoaHNrYXFqZWF0dmFoa2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1MTE1MzUsImV4cCI6MjA5MzA4NzUzNX0.ZQ-7SGWI_V-BgkhPNU3cYzdji5AKi-u6PPiMr3PjDPQ',
   saveDebounceMs: 350,
   realtime: true,
 };
@@ -819,7 +819,7 @@ const Sync = (() => {
     if (!window.supabase || !window.supabase.createClient) {
       throw new Error('Biblioteka Supabase nie załadowana – sprawdź połączenie z internetem');
     }
-    if (!APP_CONFIG.supabaseUrl || APP_CONFIG.supabaseUrl.includes('TWOJ-PROJEKT')) {
+    if (!APP_CONFIG.supabaseUrl || APP_CONFIG.supabaseUrl.includes('pldahhskaqjeatvahkefT')) {
       throw new Error('Brak konfiguracji Supabase – wpisz supabaseUrl i supabaseAnonKey w APP_CONFIG');
     }
     _client = window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey, {
