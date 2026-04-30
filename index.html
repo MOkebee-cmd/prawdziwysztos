@@ -922,7 +922,8 @@
           <button id="saveBtn" class="tool-btn primary">Zapisz</button>
           <button id="snapshotBtn" class="tool-btn" title="Zapisz aktualną wersję jako snapshot">📌 Wersja</button>
           <button id="changelogBtn" class="tool-btn" title="Historia wersji">🕓 Historia</button>
-          <button id="luaBtn" class="tool-btn" title="Pobierz Config.Types jako plik Lua">⬇ Lua</button>
+          <button id="luaBtn" class="tool-btn" title="Pobierz .lua z tekstami bezpośrednio w pliku (gotowe do podmiany)">⬇ Lua</button>
+          <button id="luaLocaleBtn" class="tool-btn" title="Pobierz .lua z locale() + osobny en.json (system tłumaczeń)">⬇ Lua+i18n</button>
           <button id="exportBtn" class="tool-btn">Eksport</button>
           <button id="importBtn" class="tool-btn">Import</button>
         </div>
@@ -2639,22 +2640,27 @@ function luaValue(v){
 }
 
 // Główna funkcja. Buduje { lua, locale } – obie struktury naraz.
+// options.inlineStrings = true → wstawia teksty bezpośrednio zamiast locale("KEY")
 function dataToLuaWithLocale(data, options){
   options = options || {};
   const onlyCategoryId = options.categoryId || null;
+  const inlineStrings = options.inlineStrings === true;
   const localeMap = {};   // KEY → "wartość"
 
-  // Pomocnik: zarejestruj label/desc i zwróć Lua expression `locale("KEY")`
-  // jeżeli tekst już wygląda jak klucz locale, użyj go bezpośrednio (nie dodawaj do mapy)
+  // Pomocnik: zarejestruj label/desc i zwróć Lua expression
+  // - jeżeli inlineStrings: zwraca po prostu "tekst"
+  // - jeżeli tekst już wygląda jak klucz locale: zwraca locale("KEY") i NIE dodaje do mapy
+  // - inaczej: generuje klucz, owija w locale(), dodaje do mapy
   function registerText(text, suggestedKey){
     if (text == null) text = '';
     text = String(text);
+    if (inlineStrings) {
+      return '"' + escapeLuaString(text) + '"';
+    }
     if (looksLikeLocaleKey(text)) {
-      // Już jest kluczem – nie nadpisujemy w locale.json (może istnieć)
       return 'locale("' + text + '")';
     }
     const key = suggestedKey;
-    // Jeżeli klucz już zarejestrowany z inną wartością, nie nadpisuj – dorzuć sufiks
     let finalKey = key;
     let suffix = 2;
     while (localeMap[finalKey] != null && localeMap[finalKey] !== text) {
@@ -2858,19 +2864,32 @@ function timestampForFile(){
   return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes());
 }
 
-// Eksport: pobiera DWA pliki – .lua + en.json
-function exportLua(categoryId){
-  const result = dataToLuaWithLocale(STATE.data, { categoryId: categoryId || null });
+// Eksport domyślnie INLINE (teksty bezpośrednio w .lua, bez locale()).
+// Drugi argument: opcje { mode: 'inline' | 'locale' }
+function exportLua(categoryId, options){
+  options = options || {};
+  const mode = options.mode === 'locale' ? 'locale' : 'inline';
+  const inlineStrings = (mode === 'inline');
+  const result = dataToLuaWithLocale(STATE.data, {
+    categoryId: categoryId || null,
+    inlineStrings: inlineStrings,
+  });
   const stamp = timestampForFile();
   const suffix = categoryId ? '_' + categoryId : '_all';
   downloadFile('prp-perks' + suffix + '_' + stamp + '.lua', result.lua, 'text/x-lua');
-  // Krótkie opóźnienie żeby przeglądarka zdążyła odpalić drugi download
-  setTimeout(() => {
-    downloadFile('en' + suffix + '_' + stamp + '.json', localeMapToJson(result.locale), 'application/json');
-  }, 250);
-  showToast(categoryId
-    ? 'Pobrano .lua + en.json dla "' + categoryId + '"'
-    : 'Pobrano .lua + en.json (wszystkie kategorie)');
+  // en.json tylko w trybie locale (inline ich nie potrzebuje)
+  if (!inlineStrings) {
+    setTimeout(() => {
+      downloadFile('en' + suffix + '_' + stamp + '.json', localeMapToJson(result.locale), 'application/json');
+    }, 250);
+    showToast(categoryId
+      ? 'Pobrano .lua + en.json (locale) dla "' + categoryId + '"'
+      : 'Pobrano .lua + en.json (locale)');
+  } else {
+    showToast(categoryId
+      ? 'Pobrano .lua (inline) dla "' + categoryId + '"'
+      : 'Pobrano .lua (inline)');
+  }
 }
 
 // ============= SNAPSHOTS / CHANGELOG =============
@@ -3044,14 +3063,11 @@ async function refreshChangelogList(){
       try {
         const snap = await Snapshots.load(id);
         if (!snap || !snap.data) throw new Error('Snapshot pusty');
-        const result = dataToLuaWithLocale(snap.data);
+        const result = dataToLuaWithLocale(snap.data, { inlineStrings: true });
         const dt = new Date(snap.created_at);
         const pad = (n) => String(n).padStart(2, '0');
         const stamp = dt.getFullYear() + pad(dt.getMonth()+1) + pad(dt.getDate()) + '_' + pad(dt.getHours()) + pad(dt.getMinutes());
         downloadFile('prp-perks_snapshot_' + stamp + '.lua', result.lua, 'text/x-lua');
-        setTimeout(() => {
-          downloadFile('en_snapshot_' + stamp + '.json', localeMapToJson(result.locale), 'application/json');
-        }, 250);
       } catch (e) {
         showToast('Błąd: ' + e.message, 'error');
       } finally {
@@ -3194,11 +3210,12 @@ function init(){
   };
   $('#exportBtn').onclick = openExportModal;
   $('#importBtn').onclick = openImportModal;
-  $('#luaBtn').onclick = () => exportLua(null);
+  $('#luaBtn').onclick = () => exportLua(null, { mode: 'inline' });
+  $('#luaLocaleBtn').onclick = () => exportLua(null, { mode: 'locale' });
   $('#snapshotBtn').onclick = takeManualSnapshot;
   $('#changelogBtn').onclick = openChangelogModal;
   $('#changelogManualBtn').onclick = takeManualSnapshot;
-  $('#changelogLuaCurrentBtn').onclick = () => exportLua(null);
+  $('#changelogLuaCurrentBtn').onclick = () => exportLua(null, { mode: 'inline' });
 
   $('#searchInput').oninput = (e) => {
     STATE.ui.search = e.target.value;
