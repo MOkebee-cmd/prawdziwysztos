@@ -853,6 +853,112 @@
     margin-left: auto;
   }
 
+  /* ===== Aktualizacje edytora ===== */
+  .updates-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--acc-points);
+    margin-left: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 6px rgba(170,155,110,0.6);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .updates-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-right: 4px;
+  }
+  .update-entry {
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-left: 3px solid var(--cat-color, var(--acc-points));
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .update-entry.update-latest {
+    border-left-color: var(--acc-points);
+    background: rgba(170,155,110,0.04);
+  }
+  .update-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .update-version {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--acc-points);
+  }
+  .update-date {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .update-tag {
+    font-size: 9.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    background: var(--bg-4);
+    color: var(--text-2);
+  }
+  .update-tag.tag-new { background: rgba(125,138,120,0.2); color: #a8b8a3; }
+  .update-tag.tag-fix { background: rgba(146,120,120,0.2); color: #c8a8a8; }
+  .update-tag.tag-breaking { background: rgba(184,120,120,0.15); color: var(--acc-danger); }
+  .update-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  .update-entry ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .update-entry li {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-2);
+    padding: 4px 0 4px 18px;
+    position: relative;
+  }
+  .update-entry li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .update-entry li strong {
+    color: var(--text-1);
+    font-weight: 600;
+  }
+  .update-entry code {
+    background: var(--bg-3);
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--acc-points);
+  }
+
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
@@ -918,10 +1024,13 @@
           <button id="addPerkBtn" class="tool-btn">+ Perk</button>
           <button id="duplicateBtn" class="icon-btn" title="Duplikuj">⧉</button>
           <button id="deleteBtn" class="icon-btn danger" title="Usuń (Delete)">⌫</button>
-          <button id="autoLayoutBtn" class="tool-btn">Auto układ</button>
           <button id="saveBtn" class="tool-btn primary">Zapisz</button>
           <button id="snapshotBtn" class="tool-btn" title="Zapisz aktualną wersję jako snapshot">📌 Wersja</button>
-          <button id="changelogBtn" class="tool-btn" title="Historia wersji">🕓 Historia</button>
+          <button id="changelogBtn" class="tool-btn" title="Historia wersji (snapshoty)">🕓 Historia</button>
+          <button id="updatesBtn" class="tool-btn" title="Co nowego w edytorze">
+            🆕 Aktualizacje
+            <span class="updates-dot" id="updatesDot" style="display:none;"></span>
+          </button>
           <button id="luaBtn" class="tool-btn" title="Pobierz .lua z tekstami bezpośrednio w pliku (gotowe do podmiany)">⬇ Lua</button>
           <button id="luaLocaleBtn" class="tool-btn" title="Pobierz .lua z locale() + osobny en.json (system tłumaczeń)">⬇ Lua+i18n</button>
           <button id="exportBtn" class="tool-btn">Eksport</button>
@@ -1010,6 +1119,20 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- Modal: aktualizacje edytora -->
+  <div class="modal-bd" id="updatesModal">
+    <div class="modal modal-wide">
+      <h3>Co nowego w Skilltree Studio</h3>
+      <p class="help-tip" style="margin-bottom: 16px;">
+        Lista zmian wprowadzonych do samego narzędzia. Najnowsza wersja na górze.
+      </p>
+      <div class="updates-list" id="updatesList"></div>
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-updates">Rozumiem</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: panel changelog/historia wersji -->
   <div class="modal-bd" id="changelogModal">
@@ -1373,7 +1496,16 @@ const Sync = (() => {
     pending.clear();
   }
 
-  return { call, queue, flush, loadAll, startPolling, stopPolling, flushOnUnload, onStatus, getClient: client };
+  function clearPending(){
+    pending.clear();
+    saveTimer && clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+
+  function suspend(){ suspended = true; }
+  function resume(){ suspended = false; }
+
+  return { call, queue, flush, loadAll, startPolling, stopPolling, flushOnUnload, onStatus, getClient: client, clearPending, suspend, resume };
 })();
 
 
@@ -2224,46 +2356,6 @@ function deleteSelected(){
   showToast('Usunięto ' + ids.length + ' perków');
 }
 
-function autoLayout(){
-  const spec = getActiveSpec();
-  if (!spec) return;
-  const perks = spec.perks;
-  const depth = {};
-  function getDepth(id, visiting){
-    if (depth[id] != null) return depth[id];
-    const v = visiting || new Set();
-    if (v.has(id)) return 0;
-    v.add(id);
-    const p = perks[id];
-    if (!p) return 0;
-    const reqs = Object.keys(p.requiredPerks || {});
-    if (reqs.length === 0) { depth[id] = 0; return 0; }
-    const d = 1 + Math.max.apply(null, reqs.map(r => getDepth(r, v)));
-    depth[id] = d;
-    return d;
-  }
-  Object.keys(perks).forEach(id => getDepth(id));
-  const byDepth = {};
-  Object.entries(depth).forEach(([id, d]) => {
-    if (!byDepth[d]) byDepth[d] = [];
-    byDepth[d].push(id);
-  });
-  const xStep = 160, yStep = 140;
-  const xStart = 200, yStart = 180;
-  Object.keys(byDepth).sort((a, b) => +a - +b).forEach(d => {
-    byDepth[d].forEach((id, i) => {
-      perks[id].x = xStart + i * xStep;
-      perks[id].y = yStart + (+d) * yStep;
-    });
-  });
-  renderAll();
-  // Wyślij wszystkie nowe pozycje
-  const catId = STATE.ui.activeCategory;
-  const sid = STATE.ui.activeSpecId;
-  Object.values(perks).forEach(p => syncMove(catId, sid, p.id, p.x, p.y));
-  showToast('Ułożono automatycznie');
-}
-
 function toggleConnectMode(){
   STATE.ui.connectMode = !STATE.ui.connectMode;
   STATE.ui.connectFrom = null;
@@ -2987,6 +3079,160 @@ const Snapshots = (() => {
 
 // ============= UI: PANEL CHANGELOG =============
 
+// ============= AKTUALIZACJE EDYTORA =============
+// Lista zmian – najnowsza wersja PIERWSZA. Każda nowa wersja = jeden wpis.
+// Po dodaniu wpisu z nowszą datą, użytkownicy zobaczą złotą kropkę przy przycisku
+// dopóki nie otworzą panelu.
+const APP_UPDATES = [
+  {
+    version: '1.4.1',
+    date: '2026-04-30',
+    title: 'Naprawa przywracania wersji + sprzątanie kodu',
+    tags: ['fix'],
+    items: [
+      '<strong>Naprawione przywracanie ze snapshotu</strong>: pozycje perków na canvasie wracają teraz dokładnie tak, jak były w momencie zapisu wersji.',
+      'Przed restore zatrzymywany jest cały sync (kolejka edycji + realtime) — żadne niezapisane drag-i ani realtime event-y nie nadpisują przywróconych pozycji.',
+      'Po restore wymuszane jest pełne pobranie stanu z bazy (nie ufa localStorage), więc nie ma "duchów" z poprzedniej wersji.',
+      'Cache lokalny czyszczony i nadpisywany aktualnym stanem po restore.',
+      'Usunięta funkcja <code>autoLayout()</code> (martwy kod – przycisk już dawno został usunięty).',
+    ],
+  },
+  {
+    version: '1.4.0',
+    date: '2026-04-30',
+    title: 'Inline eksport Lua + panel aktualizacji',
+    tags: ['new', 'fix'],
+    items: [
+      '<strong>Eksport Lua – tryb inline</strong>: domyślny przycisk <code>⬇ Lua</code> pobiera plik z tekstami bezpośrednio w środku (bez <code>locale()</code>). Twoje "Dobro wraca" trafia jako label, nie generyczny klucz.',
+      '<strong>Drugi przycisk <code>⬇ Lua+i18n</code></strong> dla osób korzystających z systemu tłumaczeń – pobiera <code>.lua</code> + <code>en.json</code> jak dotąd.',
+      '<strong>Panel "Co nowego"</strong> – ten który właśnie czytasz. Po nowej zmianie zobaczysz złotą kropkę przy przycisku 🆕.',
+      'Snapshoty z Historii pobierają teraz w trybie inline (gotowe do wgrania do resource bez en.json).',
+    ],
+  },
+  {
+    version: '1.3.0',
+    date: '2026-04-30',
+    title: 'Eksport Lua + Historia wersji',
+    tags: ['new'],
+    items: [
+      '<strong>Eksport <code>.lua</code></strong>: format zgodny z <code>trucker_perks.lua</code>, struktura <code>Config.&lt;Type&gt;Cfg</code> + alias do <code>Config.Types[...]</code>.',
+      '<strong>Snapshoty co godzinę</strong>: aplikacja sama zapisuje stan bazy do tabeli <code>snapshots</code> w Supabase, max 24 ostatnie automatyczne.',
+      '<strong>Ręczne wersje</strong>: przycisk 📌 Wersja zapisuje stan z opisem (max 50 ostatnich).',
+      '<strong>Panel 🕓 Historia</strong>: lista wszystkich snapshotów z opcjami Przywróć / Pobierz <code>.lua</code> / Pobierz <code>.json</code> / Usuń.',
+      'Inteligentne klucze locale (gdy używasz Lua+i18n): <code>TRUCKER_PERK_LONG_DISTANCE_LABEL</code> zamiast <code>TRUCKER_TRUCKER_PERK_...</code>.',
+    ],
+  },
+  {
+    version: '1.2.0',
+    date: '2026-04-30',
+    title: 'Multi-select i tryb przesuwania',
+    tags: ['new'],
+    items: [
+      '<strong>Zaznaczanie prostokątem</strong> (jak na pulpicie): przeciągnij na pustym miejscu, żeby wybrać kilka perków na raz.',
+      '<strong>Shift / Ctrl + klik</strong> = dodaj/usuń perk z grupy.',
+      '<strong>Drag grupowy</strong>: przesuwasz cały zaznaczony zestaw, zachowując odległości.',
+      '<strong>Ctrl+A</strong> = zaznacz wszystkie, <strong>Delete</strong> = usuń całą grupę, <strong>Ctrl+D</strong> = duplikuj z zachowaniem zależności.',
+      '<strong>Przycisk ✋ Pan mode</strong>: przełącz na tryb "lewy klik = pan widoku". W trybie zaznaczania pan robisz przez Alt+klik lub środkowy przycisk myszy.',
+    ],
+  },
+  {
+    version: '1.1.0',
+    date: '2026-04-29',
+    title: 'Logowanie i synchronizacja w czasie rzeczywistym',
+    tags: ['new', 'breaking'],
+    items: [
+      '<strong>Wymagane logowanie</strong>: dostęp do edytora dopiero po podaniu email + hasła (Supabase Auth).',
+      '<strong>Realtime sync</strong>: zmiany u jednej osoby pojawiają się natychmiast u pozostałych zalogowanych przez WebSocket.',
+      '<strong>RLS policies</strong>: tabele dostępne tylko dla zalogowanych, anonimowi użytkownicy zablokowani.',
+      'Przycisk wylogowania ⏻ w lewym panelu.',
+    ],
+  },
+  {
+    version: '1.0.0',
+    date: '2026-04-28',
+    title: 'Pierwsza wersja Skilltree Studio',
+    tags: ['new'],
+    items: [
+      'Edytor drzewek perków dla <code>prp-perks</code> w stylu Path of Exile.',
+      'Cztery kategorie: Ogólne (character), Cywil (civ), Crime, Frakcje (trucker).',
+      'Backend: Supabase Postgres + WebSocket realtime.',
+      'Edycja: dodawanie perków, łączenie zależności, edytor pól (label/desc/efekty/wymagania).',
+      'Eksport / import JSON.',
+    ],
+  },
+];
+
+const Updates = (() => {
+  const STORAGE_KEY = 'skilltree_last_seen_update';
+
+  function latestVersion(){
+    return APP_UPDATES.length > 0 ? APP_UPDATES[0].version : '0.0.0';
+  }
+
+  function getLastSeen(){
+    try { return localStorage.getItem(STORAGE_KEY) || ''; } catch(e){ return ''; }
+  }
+  function setLastSeen(v){
+    try { localStorage.setItem(STORAGE_KEY, v); } catch(e){}
+  }
+
+  function hasUnseen(){
+    return getLastSeen() !== latestVersion();
+  }
+
+  function markAllSeen(){
+    setLastSeen(latestVersion());
+    refreshDot();
+  }
+
+  function refreshDot(){
+    const dot = document.getElementById('updatesDot');
+    if (!dot) return;
+    dot.style.display = hasUnseen() ? 'inline-block' : 'none';
+  }
+
+  return { latestVersion, hasUnseen, markAllSeen, refreshDot };
+})();
+
+function openUpdatesModal(){
+  const wrap = $('#updatesList');
+  wrap.innerHTML = '';
+  const lastSeen = (function(){ try { return localStorage.getItem('skilltree_last_seen_update') || ''; } catch(e){ return ''; } })();
+
+  APP_UPDATES.forEach((upd, idx) => {
+    const isLatest = idx === 0;
+    const isNewSinceLastVisit = upd.version !== lastSeen && idx === 0;
+    const div = document.createElement('div');
+    div.className = 'update-entry' + (isLatest ? ' update-latest' : '');
+
+    const tagsHtml = (upd.tags || []).map(t => {
+      const map = { new: 'Nowość', fix: 'Poprawka', breaking: 'Breaking' };
+      return '<span class="update-tag tag-' + t + '">' + (map[t] || t) + '</span>';
+    }).join('');
+
+    const itemsHtml = (upd.items || []).map(i => '<li>' + i + '</li>').join('');
+
+    div.innerHTML =
+      '<div class="update-head">' +
+        '<span class="update-version">v' + escapeHtml(upd.version) + '</span>' +
+        '<span class="update-date">' + escapeHtml(upd.date) + '</span>' +
+        tagsHtml +
+      '</div>' +
+      '<div class="update-title">' + escapeHtml(upd.title) + '</div>' +
+      '<ul>' + itemsHtml + '</ul>';
+
+    wrap.appendChild(div);
+  });
+
+  $('#updatesModal').classList.add('show');
+  // Otwarcie panelu = przeczytane
+  Updates.markAllSeen();
+}
+
+function closeUpdatesModal(){
+  $('#updatesModal').classList.remove('show');
+}
+
 function openChangelogModal(){
   $('#changelogModal').classList.add('show');
   refreshChangelogList();
@@ -3035,21 +3281,63 @@ async function refreshChangelogList(){
   wrap.querySelectorAll('[data-snap-restore]').forEach(btn => {
     btn.onclick = async () => {
       const id = btn.dataset.snapRestore;
-      if (!confirm('Przywrócić tę wersję? Zastąpi WSZYSTKIE bieżące dane.')) return;
+      if (!confirm('Przywrócić tę wersję?\n\nWszystkie bieżące dane (perki, pozycje, drzewa) zostaną zastąpione zapisaną wersją.')) return;
       btn.disabled = true; btn.textContent = '…';
+
+      // KROK 1: zatrzymaj cały sync żeby nic z kolejki/dragów nie nadpisało restore
+      Sync.suspend();
+      Sync.clearPending();
+      // Zatrzymaj realtime na czas restore – własne event-y wywołałyby kolejny reload
+      Sync.stopPolling();
+
       try {
         const snap = await Snapshots.load(id);
         if (!snap || !snap.data) throw new Error('Snapshot pusty');
-        // Wyślij na serwer (atomowy replace_all_data)
+
+        // KROK 2: atomowy replace na serwerze (DELETE + INSERT z pos_x/pos_y ze snapshotu)
         await Sync.call('save_full', { data: snap.data });
-        // Przeładuj lokalnie z serwera
+
+        // KROK 3: zaczekaj chwilę, żeby Postgres zdążył (replace_all_data jest synchroniczny,
+        // ale realtime broadcast bywa odrobinę opóźniony; chcemy mieć pewność że re-load
+        // nie złapie stanu w połowie)
+        await new Promise(r => setTimeout(r, 200));
+
+        // KROK 4: pobierz świeży stan z bazy (nie z snap.data – żeby mieć pewność że
+        // serwer i klient mają identyczne dane bez "duchów" z localStorage)
         const fresh = await Sync.call('load', {});
-        if (fresh && fresh.data) STATE.data = fresh.data;
+        if (fresh && fresh.data) {
+          STATE.data = fresh.data;
+          // Ustaw aktywny spec na coś co istnieje
+          const t = STATE.data.types[STATE.ui.activeCategory];
+          if (!t || !t.specializations[STATE.ui.activeSpecId]) {
+            STATE.ui.activeSpecId = t ? Object.keys(t.specializations)[0] || null : null;
+          }
+        }
+
+        // KROK 5: wyczyść cache offline który mógł zawierać stary stan
+        try { localStorage.setItem('skilltree_studio_v1', JSON.stringify(STATE.data)); } catch(e){}
+
         clearSelection();
         closeChangelogModal();
         renderAll();
+
+        // KROK 6: wznów sync + realtime
+        Sync.resume();
+        Sync.startPolling((newData) => {
+          if (!newData || !newData.types) return;
+          STATE.data = newData;
+          const t = STATE.data.types[STATE.ui.activeCategory];
+          if (!t || !t.specializations[STATE.ui.activeSpecId]) {
+            STATE.ui.activeSpecId = t ? Object.keys(t.specializations)[0] || null : null;
+            STATE.ui.selectedPerkId = null;
+            STATE.ui.selectedPerkIds.clear();
+          }
+          renderAll();
+        });
+
         showToast('Przywrócono wersję z ' + new Date(snap.created_at).toLocaleString('pl-PL'));
       } catch (e) {
+        Sync.resume();
         showToast('Błąd: ' + e.message, 'error');
       } finally {
         btn.disabled = false; btn.textContent = 'Przywróć';
@@ -3188,7 +3476,6 @@ function init(){
   $('#addPerkBtn').onclick = addPerk;
   $('#duplicateBtn').onclick = duplicatePerk;
   $('#deleteBtn').onclick = deleteSelected;
-  $('#autoLayoutBtn').onclick = autoLayout;
   $('#connectBtn').onclick = toggleConnectMode;
   $('#panModeBtn').onclick = () => {
     STATE.ui.panMode = !STATE.ui.panMode;
@@ -3214,6 +3501,7 @@ function init(){
   $('#luaLocaleBtn').onclick = () => exportLua(null, { mode: 'locale' });
   $('#snapshotBtn').onclick = takeManualSnapshot;
   $('#changelogBtn').onclick = openChangelogModal;
+  $('#updatesBtn').onclick = openUpdatesModal;
   $('#changelogManualBtn').onclick = takeManualSnapshot;
   $('#changelogLuaCurrentBtn').onclick = () => exportLua(null, { mode: 'inline' });
 
@@ -3236,10 +3524,12 @@ function init(){
     if (a === 'copy-io') copyExport();
     if (a === 'apply-io') applyImport();
     if (a === 'close-changelog') closeChangelogModal();
+    if (a === 'close-updates') closeUpdatesModal();
   });
   $('#specModal').onclick = (e) => { if (e.target.id === 'specModal') closeSpecModal(); };
   $('#ioModal').onclick = (e) => { if (e.target.id === 'ioModal') closeIoModal(); };
   $('#changelogModal').onclick = (e) => { if (e.target.id === 'changelogModal') closeChangelogModal(); };
+  $('#updatesModal').onclick = (e) => { if (e.target.id === 'updatesModal') closeUpdatesModal(); };
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, select')) return;
@@ -3249,7 +3539,7 @@ function init(){
     } else if (e.key === 'Escape') {
       if (STATE.ui.connectMode) toggleConnectMode();
       else if (STATE.ui.selectedPerkIds.size > 0) { clearSelection(); renderAll(); }
-      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); }
+      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); }
     } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicatePerk();
@@ -3423,6 +3713,8 @@ function bootApp(){
     });
     // Auto-snapshoty co godzinę
     Snapshots.startAutoTimer();
+    // Sprawdź czy są nieprzeczytane aktualizacje edytora
+    Updates.refreshDot();
   }).catch(e => {
     showToast('Nie udało się połączyć z serwerem: ' + e.message, 'error');
     console.error(e);
