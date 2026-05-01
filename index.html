@@ -543,6 +543,94 @@
   }
   .perk-node.dragging .perk-shape { opacity: 0.85; }
 
+  /* ===== Perk specjalizacji – większy + custom kolor + glow ===== */
+  .perk-node.is-spec .perk-shape {
+    fill: var(--perk-color, var(--bg-2));
+    stroke: var(--perk-color, var(--line-3));
+    stroke-width: 2;
+    filter: drop-shadow(0 0 12px var(--perk-glow, rgba(170,155,110,0.5)));
+  }
+  .perk-node.is-spec:hover .perk-shape {
+    filter: drop-shadow(0 0 18px var(--perk-glow, rgba(170,155,110,0.7)));
+  }
+  .perk-node.is-spec .perk-icon-text {
+    font-size: 22px;
+    fill: #fff;
+    font-weight: 700;
+  }
+  .perk-node.is-spec .perk-label {
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--text-1);
+  }
+  /* selected state nadpisuje stroke ale glow zostaje */
+  .perk-node.is-spec.selected .perk-shape {
+    stroke: var(--acc-points);
+  }
+
+  /* ===== Alignment badges (mały okrąg w lewym dolnym rogu) ===== */
+  .perk-alignment-badge {
+    pointer-events: none;
+  }
+  .perk-alignment-badge.good { fill: #6ab07a; stroke: #1a1a1a; stroke-width: 1.5; }
+  .perk-alignment-badge.evil { fill: #c75959; stroke: #1a1a1a; stroke-width: 1.5; }
+  .perk-alignment-text {
+    fill: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+    user-select: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ===== Inspector: spec section ===== */
+  .spec-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+  }
+  .spec-toggle-row input[type="checkbox"] {
+    width: 16px; height: 16px; cursor: pointer; accent-color: var(--acc-points);
+  }
+  .spec-toggle-row label {
+    flex: 1; cursor: pointer; font-size: 12.5px;
+    color: var(--text-1); margin: 0;
+  }
+  .spec-color-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px; padding: 0 4px;
+  }
+  .spec-color-row label { font-size: 11px; color: var(--text-3); margin: 0; }
+  .spec-color-row input[type="color"] {
+    width: 36px; height: 28px; padding: 2px;
+    border: 1px solid var(--line-2); border-radius: 4px;
+    background: var(--bg-2); cursor: pointer;
+  }
+  .spec-color-row input[type="text"] {
+    width: 90px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  .alignment-row {
+    display: flex; gap: 6px; margin-bottom: 8px;
+  }
+  .alignment-row .align-btn {
+    flex: 1; padding: 7px 4px; font-size: 11px;
+    background: var(--bg-2); border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm); color: var(--text-2);
+    cursor: pointer; transition: all 0.1s;
+    font-family: 'Manrope', sans-serif;
+  }
+  .alignment-row .align-btn:hover { background: var(--bg-3); }
+  .alignment-row .align-btn.active { background: var(--bg-4); color: var(--text-1); border-color: var(--line-3); font-weight: 600; }
+  .alignment-row .align-btn.good.active { border-color: #6ab07a; color: #a3d4ad; }
+  .alignment-row .align-btn.evil.active { border-color: #c75959; color: #e0a8a8; }
+
   .edge-line {
     fill: none;
     stroke: var(--line-3);
@@ -1246,6 +1334,9 @@ const Sync = (() => {
       levels: levels,
       x: r.pos_x || 200,
       y: r.pos_y || 200,
+      isSpec: r.is_spec === true,
+      specColor: r.spec_color || null,
+      alignment: r.alignment || 'neutral',
     };
   }
 
@@ -1261,6 +1352,9 @@ const Sync = (() => {
       pos_y: p.y || 200,
       required_perks: p.requiredPerks || {},
       levels: p.levels || [{desc:''}],
+      is_spec: p.isSpec === true,
+      spec_color: p.specColor || null,
+      alignment: p.alignment || 'neutral',
       last_modified_by: CLIENT_ID,
     };
   }
@@ -1732,6 +1826,19 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+// #rrggbb / #rgb → rgba(r,g,b,0.55) – półprzezroczysty glow
+function hexToGlow(hex){
+  if (!hex || typeof hex !== 'string') return 'rgba(170,155,110,0.5)';
+  let h = hex.trim().replace(/^#/, '');
+  if (h.length === 3) h = h.split('').map(c => c+c).join('');
+  if (h.length !== 6) return 'rgba(170,155,110,0.5)';
+  const r = parseInt(h.slice(0,2), 16);
+  const g = parseInt(h.slice(2,4), 16);
+  const b = parseInt(h.slice(4,6), 16);
+  if ([r,g,b].some(n => isNaN(n))) return 'rgba(170,155,110,0.5)';
+  return 'rgba(' + r + ',' + g + ',' + b + ',0.55)';
+}
+
 function renderCatTabs(){
   const wrap = $('#catTabs');
   wrap.innerHTML = '';
@@ -1895,17 +2002,32 @@ function renderCanvas(){
       cls += ' multi-selected';
     }
     if (STATE.ui.connectFrom === perk.id) cls += ' connect-source';
+    if (perk.isSpec) cls += ' is-spec';
     g.setAttribute('class', cls);
     g.setAttribute('transform', 'translate(' + perk.x + ',' + perk.y + ')');
     g.dataset.perkId = perk.id;
 
+    // Custom kolor dla spec perków – ustawiany jako CSS variable na <g>
+    if (perk.isSpec && perk.specColor) {
+      const c = perk.specColor;
+      g.style.setProperty('--perk-color', c);
+      g.style.setProperty('--perk-glow', hexToGlow(c));
+    } else if (perk.isSpec) {
+      // Fallback: kolor specjalizacji
+      const fallback = (spec.color || '#7d8a78');
+      g.style.setProperty('--perk-color', fallback);
+      g.style.setProperty('--perk-glow', hexToGlow(fallback));
+    }
+
+    // Spec perki są większe (rozmiar romba 72 zamiast 48 → ~100px diagonal)
+    const size = perk.isSpec ? 36 : 24;
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('class', 'perk-shape');
-    rect.setAttribute('x', -24);
-    rect.setAttribute('y', -24);
-    rect.setAttribute('width', 48);
-    rect.setAttribute('height', 48);
-    rect.setAttribute('rx', 6);
+    rect.setAttribute('x', -size);
+    rect.setAttribute('y', -size);
+    rect.setAttribute('width', size * 2);
+    rect.setAttribute('height', size * 2);
+    rect.setAttribute('rx', perk.isSpec ? 8 : 6);
     rect.setAttribute('transform', 'rotate(45)');
     g.appendChild(rect);
 
@@ -1918,22 +2040,39 @@ function renderCanvas(){
 
     const costBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     costBg.setAttribute('class', 'perk-cost-circle');
-    costBg.setAttribute('cx', 24);
-    costBg.setAttribute('cy', -24);
-    costBg.setAttribute('r', 9);
+    costBg.setAttribute('cx', size);
+    costBg.setAttribute('cy', -size);
+    costBg.setAttribute('r', perk.isSpec ? 11 : 9);
     g.appendChild(costBg);
 
     const costTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     costTxt.setAttribute('class', 'perk-cost-text');
-    costTxt.setAttribute('x', 24);
-    costTxt.setAttribute('y', -24);
+    costTxt.setAttribute('x', size);
+    costTxt.setAttribute('y', -size);
     costTxt.textContent = perk.requiredLevel || 1;
     g.appendChild(costTxt);
+
+    // Alignment badge (good/evil) – w lewym dolnym rogu
+    if (perk.alignment === 'good' || perk.alignment === 'evil') {
+      const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      badgeBg.setAttribute('class', 'perk-alignment-badge ' + perk.alignment);
+      badgeBg.setAttribute('cx', -size);
+      badgeBg.setAttribute('cy', size);
+      badgeBg.setAttribute('r', perk.isSpec ? 12 : 10);
+      g.appendChild(badgeBg);
+
+      const badgeTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      badgeTxt.setAttribute('class', 'perk-alignment-text');
+      badgeTxt.setAttribute('x', -size);
+      badgeTxt.setAttribute('y', size);
+      badgeTxt.textContent = perk.alignment === 'good' ? 'G' : 'E';
+      g.appendChild(badgeTxt);
+    }
 
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('class', 'perk-label');
     label.setAttribute('x', 0);
-    label.setAttribute('y', 60);
+    label.setAttribute('y', perk.isSpec ? 75 : 60);
     const lbl = perk.label || perk.id;
     label.textContent = lbl.length > 22 ? lbl.slice(0, 20) + '…' : lbl;
     g.appendChild(label);
@@ -2037,6 +2176,29 @@ function renderInspector(){
   html += '<div class="field"><label>Wymagany level</label><input type="number" min="1" data-bind="requiredLevel" value="' + (perk.requiredLevel || 1) + '"></div>';
   html += '<div class="field"><label>Ikona (image)</label><input class="mono" data-bind="image" value="' + escapeHtml(perk.image || '') + '"></div>';
   html += '</div>';
+
+  // ===== Spec perk toggle + color =====
+  const isSpec = perk.isSpec === true;
+  const specColor = perk.specColor || '';
+  const specColorForPicker = specColor || (spec && spec.color) || '#7d8a78';
+  html += '<div class="section-title">Wygląd na drzewie</div>';
+  html += '<div class="spec-toggle-row">' +
+    '<input type="checkbox" id="specToggle" ' + (isSpec ? 'checked' : '') + '>' +
+    '<label for="specToggle">Perk specjalizacji <span style="color:var(--text-3); font-weight:400;">(większy + glow)</span></label>' +
+  '</div>';
+  html += '<div class="spec-color-row" id="specColorRow" style="' + (isSpec ? '' : 'display:none;') + '">' +
+    '<label>Kolor:</label>' +
+    '<input type="color" id="specColorPicker" value="' + escapeHtml(specColorForPicker) + '">' +
+    '<input type="text" id="specColorHex" class="mono" value="' + escapeHtml(specColor) + '" placeholder="auto (kolor specjalizacji)">' +
+  '</div>';
+
+  // ===== Alignment buttons =====
+  const align = perk.alignment || 'neutral';
+  html += '<div class="alignment-row">' +
+    '<button class="align-btn ' + (align === 'neutral' ? 'active' : '') + '" data-align="neutral">Neutralny</button>' +
+    '<button class="align-btn good ' + (align === 'good' ? 'active' : '') + '" data-align="good">Dobry</button>' +
+    '<button class="align-btn evil ' + (align === 'evil' ? 'active' : '') + '" data-align="evil">Zły</button>' +
+  '</div>';
 
   html += '<div class="section-title">Wymagane perki</div>';
   html += '<div id="reqList">';
@@ -2211,6 +2373,59 @@ function renderInspector(){
       syncCurrentPerk();
     };
   }
+
+  // ===== Spec perk toggle handler =====
+  const specToggle = inspector.querySelector('#specToggle');
+  if (specToggle) {
+    specToggle.addEventListener('change', () => {
+      perk.isSpec = specToggle.checked;
+      const row = inspector.querySelector('#specColorRow');
+      if (row) row.style.display = perk.isSpec ? '' : 'none';
+      renderCanvas();
+      syncCurrentPerk();
+    });
+  }
+
+  // ===== Color picker (dwa źródła – picker i text) =====
+  const colorPicker = inspector.querySelector('#specColorPicker');
+  const colorHex = inspector.querySelector('#specColorHex');
+  if (colorPicker) {
+    colorPicker.addEventListener('input', () => {
+      perk.specColor = colorPicker.value;
+      if (colorHex) colorHex.value = colorPicker.value;
+      renderCanvas();
+      syncCurrentPerk();
+    });
+  }
+  if (colorHex) {
+    colorHex.addEventListener('input', () => {
+      const v = colorHex.value.trim();
+      if (v === '') {
+        perk.specColor = null;          // null = fallback do koloru specjalizacji
+      } else if (/^#[0-9a-fA-F]{6}$/.test(v) || /^#[0-9a-fA-F]{3}$/.test(v)) {
+        perk.specColor = v;
+        if (colorPicker) colorPicker.value = v.length === 4
+          ? '#' + v[1]+v[1] + v[2]+v[2] + v[3]+v[3]
+          : v;
+      } else {
+        return; // częściowo wpisany hex – ignoruj
+      }
+      renderCanvas();
+      syncCurrentPerk();
+    });
+  }
+
+  // ===== Alignment buttons =====
+  inspector.querySelectorAll('[data-align]').forEach(btn => {
+    btn.onclick = () => {
+      const v = btn.dataset.align;
+      perk.alignment = v === 'neutral' ? 'neutral' : v;
+      // Refresh active states
+      inspector.querySelectorAll('[data-align]').forEach(b => b.classList.toggle('active', b.dataset.align === perk.alignment));
+      renderCanvas();
+      syncCurrentPerk();
+    };
+  });
 
   inspector.querySelector('#deletePerkBtn').onclick = () => {
     if (confirm('Usunąć perk "' + (perk.label || perk.id) + '"?')) deletePerk(perk.id);
@@ -2859,6 +3074,18 @@ function dataToLuaWithLocale(data, options){
         lines.push(indentStr(5) + 'image = "' + escapeLuaString(perk.image || pid) + '",');
         lines.push(indentStr(5) + 'requiredLevel = ' + (perk.requiredLevel || 1) + ',');
 
+        // Spec marker + custom kolor (tylko gdy ustawione, żeby nie zaśmiecać outputu)
+        if (perk.isSpec) {
+          lines.push(indentStr(5) + 'isSpec = true,');
+          if (perk.specColor) {
+            lines.push(indentStr(5) + 'specColor = "' + escapeLuaString(perk.specColor) + '",');
+          }
+        }
+        // Alignment – tylko jeżeli good lub evil (neutral = default, pomijamy)
+        if (perk.alignment === 'good' || perk.alignment === 'evil') {
+          lines.push(indentStr(5) + 'alignment = "' + perk.alignment + '",');
+        }
+
         // requiredPerks – tylko jeżeli niepuste
         const reqPerks = perk.requiredPerks || {};
         const reqEntries = Object.entries(reqPerks);
@@ -3084,6 +3311,19 @@ const Snapshots = (() => {
 // Po dodaniu wpisu z nowszą datą, użytkownicy zobaczą złotą kropkę przy przycisku
 // dopóki nie otworzą panelu.
 const APP_UPDATES = [
+  {
+    version: '1.5.0',
+    date: '2026-05-01',
+    title: 'Perki specjalizacji + alignment Good/Evil',
+    tags: ['new'],
+    items: [
+      '<strong>Perki specjalizacji</strong>: zaznacz checkbox "Perk specjalizacji" w edytorze, żeby perk był ~1.5x większy z kolorowym tłem i poświatą.',
+      '<strong>Custom kolor</strong> per perk specjalizacji – dwa pola wpisywania (color picker + hex). Puste = automatycznie kolor specjalizacji.',
+      '<strong>Charakter perka</strong>: trzy przyciski Neutralny / Dobry / Zły. Dobry pokazuje zieloną kropkę "G", Zły – czerwoną "E" w lewym dolnym rogu kafelka.',
+      '<strong>Eksport Lua</strong> uwzględnia nowe pola: <code>isSpec = true</code>, <code>specColor = "#xxx"</code>, <code>alignment = "good"</code>. Pomijane gdy domyślne (neutral, brak spec).',
+      '<strong>Wymagana migracja SQL</strong>: uruchom <code>migration-spec-alignment.sql</code> w Supabase żeby dodać 3 nowe kolumny do tabeli <code>perks</code>.',
+    ],
+  },
   {
     version: '1.4.1',
     date: '2026-04-30',
