@@ -941,7 +941,7 @@
     margin-left: auto;
   }
 
-  /* ===== Aktualizacje edytora ===== */
+  /* ===== Changelog flat-list ===== */
   .updates-dot {
     display: inline-block;
     width: 7px;
@@ -958,94 +958,283 @@
     50% { opacity: 0.4; }
   }
   .updates-list {
-    max-height: 60vh;
+    max-height: 65vh;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 22px;
     padding-right: 4px;
   }
-  .update-entry {
-    background: var(--bg-2);
-    border: 1px solid var(--line-1);
-    border-left: 3px solid var(--cat-color, var(--acc-points));
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
+  .changelog-entry {
+    border-left: 2px solid var(--line-1);
+    padding-left: 14px;
   }
-  .update-entry.update-latest {
+  .changelog-entry.is-latest {
     border-left-color: var(--acc-points);
-    background: rgba(170,155,110,0.04);
   }
-  .update-head {
+  .cl-head {
     display: flex;
     align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
+    gap: 12px;
+    margin-bottom: 10px;
   }
-  .update-version {
+  .cl-title {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
-    color: var(--acc-points);
+    color: var(--text-1);
+    letter-spacing: -0.3px;
   }
-  .update-date {
+  .cl-version {
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     color: var(--text-3);
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .update-tag {
-    font-size: 9.5px;
-    padding: 2px 6px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
     border-radius: 3px;
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.6px;
-    background: var(--bg-4);
-    color: var(--text-2);
+    padding: 1px 6px;
   }
-  .update-tag.tag-new { background: rgba(125,138,120,0.2); color: #a8b8a3; }
-  .update-tag.tag-fix { background: rgba(146,120,120,0.2); color: #c8a8a8; }
-  .update-tag.tag-breaking { background: rgba(184,120,120,0.15); color: var(--acc-danger); }
-  .update-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-1);
-    margin-bottom: 8px;
-    line-height: 1.3;
-  }
-  .update-entry ul {
+  .cl-items {
     list-style: none;
     padding: 0;
     margin: 0;
   }
-  .update-entry li {
-    font-size: 12.5px;
-    line-height: 1.55;
+  .cl-items li {
+    font-size: 13px;
+    line-height: 1.65;
     color: var(--text-2);
-    padding: 4px 0 4px 18px;
+    padding: 3px 0 3px 14px;
     position: relative;
   }
-  .update-entry li::before {
-    content: "→";
+  .cl-items li::before {
+    content: "*";
     position: absolute;
     left: 0;
+    top: 3px;
     color: var(--text-3);
     font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
   }
-  .update-entry li strong {
-    color: var(--text-1);
-    font-weight: 600;
-  }
-  .update-entry code {
+  .cl-items code {
     background: var(--bg-3);
     border: 1px solid var(--line-2);
     border-radius: 3px;
     padding: 1px 5px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 11.5px;
     color: var(--acc-points);
   }
+  .cl-tag {
+    color: var(--acc-points);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 2px;
+  }
+
+  /* ===== Search + perk list modal ===== */
+  .search-input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-sm);
+    color: var(--text-1);
+    font-size: 14px;
+    font-family: 'Manrope', sans-serif;
+    outline: none;
+    margin-bottom: 14px;
+  }
+  .search-input:focus { border-color: var(--acc-points); }
+  .search-filters {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .search-filter-btn {
+    padding: 5px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: 999px;
+    color: var(--text-2);
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.1s;
+    font-family: 'Manrope', sans-serif;
+  }
+  .search-filter-btn:hover { background: var(--bg-3); }
+  .search-filter-btn.active {
+    background: var(--bg-4); color: var(--text-1);
+    border-color: var(--line-3); font-weight: 600;
+  }
+  .search-results {
+    max-height: 55vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .search-result {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .search-result:hover { background: var(--bg-3); border-color: var(--line-3); }
+  .search-result-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: var(--cat-color, var(--bg-3));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 14px;
+    text-transform: uppercase;
+    box-shadow: 0 0 0 2px var(--bg-2);
+  }
+  .search-result-icon.is-spec { box-shadow: 0 0 8px var(--cat-color, var(--acc-points)); }
+  .search-result-body { min-width: 0; }
+  .search-result-label {
+    font-size: 13px; font-weight: 600; color: var(--text-1);
+    margin-bottom: 2px;
+  }
+  .search-result-meta {
+    font-size: 11px; color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .search-result-desc {
+    font-size: 12px; color: var(--text-2);
+    margin-top: 4px;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .search-result-tags {
+    display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+  }
+  .search-tag {
+    font-size: 9.5px; padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .search-tag.spec  { background: rgba(170,155,110,0.18); color: var(--acc-points); }
+  .search-tag.good  { background: rgba(106,176,122,0.18); color: #a3d4ad; }
+  .search-tag.evil  { background: rgba(199,89,89,0.18);   color: #e0a8a8; }
+  .search-empty {
+    text-align: center; padding: 30px 20px;
+    color: var(--text-3); font-size: 13px;
+  }
+
+  /* ===== Validation modal ===== */
+  .validate-summary {
+    padding: 12px 14px; border-radius: var(--radius-sm);
+    margin-bottom: 14px; font-size: 13px;
+  }
+  .validate-summary.ok { background: rgba(106,176,122,0.1); color: #a3d4ad; border: 1px solid rgba(106,176,122,0.3); }
+  .validate-summary.warn { background: rgba(170,155,110,0.1); color: var(--acc-points); border: 1px solid rgba(170,155,110,0.3); }
+  .validate-summary.err  { background: rgba(199,89,89,0.1); color: #e0a8a8; border: 1px solid rgba(199,89,89,0.3); }
+  .issue-list { display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow-y: auto; }
+  .issue-item {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 9px 12px; background: var(--bg-2);
+    border: 1px solid var(--line-1); border-radius: var(--radius-sm);
+    border-left-width: 3px;
+    cursor: pointer; transition: all 0.1s;
+  }
+  .issue-item:hover { background: var(--bg-3); }
+  .issue-item.severity-error   { border-left-color: var(--acc-danger); }
+  .issue-item.severity-warning { border-left-color: var(--acc-points); }
+  .issue-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 700;
+  }
+  .issue-icon.severity-error   { background: var(--acc-danger); }
+  .issue-icon.severity-warning { background: var(--acc-points); color: var(--bg-0); }
+  .issue-message { font-size: 12.5px; color: var(--text-1); }
+  .issue-location {
+    font-size: 10.5px; color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+  .issue-goto {
+    font-size: 11px; color: var(--text-3);
+    padding: 4px 8px;
+    background: var(--bg-3); border: 1px solid var(--line-2);
+    border-radius: 3px;
+  }
+
+  /* ===== Audit log ===== */
+  .audit-list { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; }
+  .audit-item {
+    display: grid;
+    grid-template-columns: 80px auto 1fr auto;
+    gap: 12px; align-items: center;
+    padding: 8px 12px; background: var(--bg-2);
+    border: 1px solid var(--line-1); border-radius: var(--radius-sm);
+    border-left: 3px solid var(--cat-color, var(--line-2));
+    font-size: 12.5px;
+  }
+  .audit-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px; color: var(--text-3);
+  }
+  .audit-op {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px; padding: 2px 6px; border-radius: 3px;
+    font-weight: 700;
+  }
+  .audit-op.INSERT { background: rgba(106,176,122,0.18); color: #a3d4ad; }
+  .audit-op.UPDATE { background: rgba(170,155,110,0.18); color: var(--acc-points); }
+  .audit-op.DELETE { background: rgba(199,89,89,0.18);   color: #e0a8a8; }
+  .audit-summary { color: var(--text-1); }
+  .audit-actor {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px; color: var(--text-3);
+  }
+
+  /* ===== Diff modal ===== */
+  .diff-section {
+    margin-bottom: 18px;
+  }
+  .diff-section h4 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px;
+    color: var(--text-3); font-weight: 600;
+    margin: 0 0 8px 0; padding-bottom: 4px;
+    border-bottom: 1px solid var(--line-1);
+  }
+  .diff-row {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 10px; padding: 6px 10px; align-items: center;
+    background: var(--bg-2); border-radius: 4px;
+    margin-bottom: 3px; font-size: 12.5px;
+    border-left: 3px solid var(--line-2);
+  }
+  .diff-row.added   { border-left-color: #6ab07a; }
+  .diff-row.removed { border-left-color: #c75959; }
+  .diff-row.changed { border-left-color: var(--acc-points); }
+  .diff-marker {
+    width: 18px; text-align: center; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .diff-row.added .diff-marker   { color: #6ab07a; }
+  .diff-row.removed .diff-marker { color: #c75959; }
+  .diff-row.changed .diff-marker { color: var(--acc-points); }
+  .diff-label { color: var(--text-1); font-weight: 500; }
+  .diff-loc { font-size: 10.5px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+  .diff-changes {
+    grid-column: 2 / -1;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .diff-changes .ck { color: var(--text-2); margin-right: 6px; }
+  .diff-changes .cb { color: #c75959; text-decoration: line-through; }
+  .diff-changes .ca { color: #a3d4ad; }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -1113,6 +1302,12 @@
           <button id="duplicateBtn" class="icon-btn" title="Duplikuj">⧉</button>
           <button id="deleteBtn" class="icon-btn danger" title="Usuń (Delete)">⌫</button>
           <button id="saveBtn" class="tool-btn primary">Zapisz</button>
+          <button id="searchBtn" class="tool-btn" title="Szukaj perków (Ctrl+K)">🔍 Szukaj</button>
+          <button id="validateBtn" class="tool-btn" title="Sprawdź problemy w drzewach">
+            ✓ Walidacja
+            <span class="updates-dot" id="validateDot" style="display:none;"></span>
+          </button>
+          <button id="auditBtn" class="tool-btn" title="Ostatnie zmiany (kto, co, kiedy)">📋 Audyt</button>
           <button id="snapshotBtn" class="tool-btn" title="Zapisz aktualną wersję jako snapshot">📌 Wersja</button>
           <button id="changelogBtn" class="tool-btn" title="Historia wersji (snapshoty)">🕓 Historia</button>
           <button id="updatesBtn" class="tool-btn" title="Co nowego w edytorze">
@@ -1218,6 +1413,71 @@
       <div class="updates-list" id="updatesList"></div>
       <div class="modal-actions">
         <button class="tool-btn primary" data-action="close-updates">Rozumiem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: wyszukiwarka perków -->
+  <div class="modal-bd" id="searchModal">
+    <div class="modal modal-wide">
+      <h3>Szukaj perków</h3>
+      <input type="text" id="searchInput" class="search-input" placeholder="Wpisz nazwę, ID, opis..." autocomplete="off">
+      <div class="search-filters" id="searchFilters">
+        <button class="search-filter-btn active" data-search-cat="all">Wszystkie</button>
+        <button class="search-filter-btn" data-search-cat="general">Ogólne</button>
+        <button class="search-filter-btn" data-search-cat="civ">Cywil</button>
+        <button class="search-filter-btn" data-search-cat="crime">Crime</button>
+        <button class="search-filter-btn" data-search-cat="faction">Frakcje</button>
+        <button class="search-filter-btn" data-search-flag="spec">Tylko spec</button>
+        <button class="search-filter-btn" data-search-flag="good">Tylko Good</button>
+        <button class="search-filter-btn" data-search-flag="evil">Tylko Evil</button>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+      <div class="modal-actions">
+        <button class="tool-btn" data-action="close-search">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: walidacja -->
+  <div class="modal-bd" id="validateModal">
+    <div class="modal modal-wide">
+      <h3>Walidacja drzewek</h3>
+      <p class="help-tip" style="margin-bottom: 12px;">
+        Lista potencjalnych problemów w danych. Klik = przejdź do perka.
+      </p>
+      <div id="validateSummary"></div>
+      <div class="issue-list" id="validateList"></div>
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-validate">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: audit log -->
+  <div class="modal-bd" id="auditModal">
+    <div class="modal modal-wide">
+      <h3>Ostatnie zmiany</h3>
+      <p class="help-tip" style="margin-bottom: 12px;">
+        50 ostatnich zmian w bazie. Drag-i perków pomijane (zachowane w snapshotach).
+      </p>
+      <div class="audit-list" id="auditList">
+        <p class="help-tip" style="text-align:center; padding:20px;">Wczytuję…</p>
+      </div>
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-audit">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: diff snapshotów -->
+  <div class="modal-bd" id="diffModal">
+    <div class="modal modal-wide">
+      <h3>Porównanie z aktualnym stanem</h3>
+      <p class="help-tip" id="diffMeta" style="margin-bottom: 14px;"></p>
+      <div id="diffBody"></div>
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-diff">Zamknij</button>
       </div>
     </div>
   </div>
@@ -1685,6 +1945,7 @@ try {
 } catch (e) { /* ignore */ }
 
 const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 function getActiveCategory(){
   return CATEGORIES.find(c => c.id === STATE.ui.activeCategory) || CATEGORIES[0];
@@ -3307,97 +3568,92 @@ const Snapshots = (() => {
 // ============= UI: PANEL CHANGELOG =============
 
 // ============= AKTUALIZACJE EDYTORA =============
-// Lista zmian – najnowsza wersja PIERWSZA. Każda nowa wersja = jeden wpis.
-// Po dodaniu wpisu z nowszą datą, użytkownicy zobaczą złotą kropkę przy przycisku
-// dopóki nie otworzą panelu.
+// Format: data DD.MM.YYYY + lista plain stringów. Hashtagi #Tag w treści są
+// auto-stylowane na końcu wpisu. Najnowszy wpis pierwszy = pojawia się jako
+// pierwszy w panelu i steruje "nieprzeczytaną" kropką.
 const APP_UPDATES = [
   {
-    version: '1.5.0',
-    date: '2026-05-01',
-    title: 'Perki specjalizacji + alignment Good/Evil',
-    tags: ['new'],
+    version: '1.6.0',
+    date: '01.05.2026',
     items: [
-      '<strong>Perki specjalizacji</strong>: zaznacz checkbox "Perk specjalizacji" w edytorze, żeby perk był ~1.5x większy z kolorowym tłem i poświatą.',
-      '<strong>Custom kolor</strong> per perk specjalizacji – dwa pola wpisywania (color picker + hex). Puste = automatycznie kolor specjalizacji.',
-      '<strong>Charakter perka</strong>: trzy przyciski Neutralny / Dobry / Zły. Dobry pokazuje zieloną kropkę "G", Zły – czerwoną "E" w lewym dolnym rogu kafelka.',
-      '<strong>Eksport Lua</strong> uwzględnia nowe pola: <code>isSpec = true</code>, <code>specColor = "#xxx"</code>, <code>alignment = "good"</code>. Pomijane gdy domyślne (neutral, brak spec).',
-      '<strong>Wymagana migracja SQL</strong>: uruchom <code>migration-spec-alignment.sql</code> w Supabase żeby dodać 3 nowe kolumny do tabeli <code>perks</code>.',
+      'Dodano wyszukiwarkę perków – Ctrl+K otwiera listę wszystkich perków z opisami i filtrami #Search',
+      'Dodano walidację drzewek – sprawdza puste opisy, oderwane zależności, perki bez nazwy #Validate',
+      'Dodano audit log – widget "Ostatnie zmiany" pokazuje kto co zmieniał, kiedy #Audit',
+      'Dodano porównywarkę snapshotów – w panelu Historia obok Przywróć jest teraz "Porównaj" #Diff',
+      'Wymagana migracja SQL: <code>migration-audit-log.sql</code> #SQL',
+    ],
+  },
+  {
+    version: '1.5.0',
+    date: '01.05.2026',
+    items: [
+      'Dodano perki specjalizacji – większe kafelki z kolorem i poświatą #UI',
+      'Dodano przełącznik Good/Evil – zielona "G" lub czerwona "E" w rogu kafelka #UI',
+      'Eksport Lua uwzględnia nowe pola: <code>isSpec</code>, <code>specColor</code>, <code>alignment</code>',
+      'Wymagana migracja SQL: <code>migration-spec-alignment.sql</code> #SQL',
     ],
   },
   {
     version: '1.4.1',
-    date: '2026-04-30',
-    title: 'Naprawa przywracania wersji + sprzątanie kodu',
-    tags: ['fix'],
+    date: '30.04.2026',
     items: [
-      '<strong>Naprawione przywracanie ze snapshotu</strong>: pozycje perków na canvasie wracają teraz dokładnie tak, jak były w momencie zapisu wersji.',
-      'Przed restore zatrzymywany jest cały sync (kolejka edycji + realtime) — żadne niezapisane drag-i ani realtime event-y nie nadpisują przywróconych pozycji.',
-      'Po restore wymuszane jest pełne pobranie stanu z bazy (nie ufa localStorage), więc nie ma "duchów" z poprzedniej wersji.',
-      'Cache lokalny czyszczony i nadpisywany aktualnym stanem po restore.',
-      'Usunięta funkcja <code>autoLayout()</code> (martwy kod – przycisk już dawno został usunięty).',
+      'Naprawiono przywracanie wersji – pozycje perków wracają poprawnie po restore #Fix',
+      'Sync zatrzymywany podczas restore – żadne niezapisane drag-i nie nadpisują przywróconej wersji',
+      'Wymagana migracja SQL: <code>fix-replace-all-data.sql</code> (RLS + WHERE TRUE) #SQL',
+      'Usunięto martwy kod funkcji autoLayout',
     ],
   },
   {
     version: '1.4.0',
-    date: '2026-04-30',
-    title: 'Inline eksport Lua + panel aktualizacji',
-    tags: ['new', 'fix'],
+    date: '30.04.2026',
     items: [
-      '<strong>Eksport Lua – tryb inline</strong>: domyślny przycisk <code>⬇ Lua</code> pobiera plik z tekstami bezpośrednio w środku (bez <code>locale()</code>). Twoje "Dobro wraca" trafia jako label, nie generyczny klucz.',
-      '<strong>Drugi przycisk <code>⬇ Lua+i18n</code></strong> dla osób korzystających z systemu tłumaczeń – pobiera <code>.lua</code> + <code>en.json</code> jak dotąd.',
-      '<strong>Panel "Co nowego"</strong> – ten który właśnie czytasz. Po nowej zmianie zobaczysz złotą kropkę przy przycisku 🆕.',
-      'Snapshoty z Historii pobierają teraz w trybie inline (gotowe do wgrania do resource bez en.json).',
+      'Eksport Lua w trybie inline – teksty bezpośrednio w pliku, bez locale() #Lua',
+      'Drugi przycisk ⬇ Lua+i18n – zachowuje stary format z locale() i en.json',
+      'Panel "Co nowego" – ten który właśnie czytasz #UI',
+      'Snapshoty z Historii pobierają w trybie inline',
     ],
   },
   {
     version: '1.3.0',
-    date: '2026-04-30',
-    title: 'Eksport Lua + Historia wersji',
-    tags: ['new'],
+    date: '30.04.2026',
     items: [
-      '<strong>Eksport <code>.lua</code></strong>: format zgodny z <code>trucker_perks.lua</code>, struktura <code>Config.&lt;Type&gt;Cfg</code> + alias do <code>Config.Types[...]</code>.',
-      '<strong>Snapshoty co godzinę</strong>: aplikacja sama zapisuje stan bazy do tabeli <code>snapshots</code> w Supabase, max 24 ostatnie automatyczne.',
-      '<strong>Ręczne wersje</strong>: przycisk 📌 Wersja zapisuje stan z opisem (max 50 ostatnich).',
-      '<strong>Panel 🕓 Historia</strong>: lista wszystkich snapshotów z opcjami Przywróć / Pobierz <code>.lua</code> / Pobierz <code>.json</code> / Usuń.',
-      'Inteligentne klucze locale (gdy używasz Lua+i18n): <code>TRUCKER_PERK_LONG_DISTANCE_LABEL</code> zamiast <code>TRUCKER_TRUCKER_PERK_...</code>.',
+      'Eksport <code>.lua</code> w formacie zgodnym z trucker_perks.lua #Lua',
+      'Auto-snapshoty co godzinę (max 24 ostatnie) #Snapshots',
+      'Ręczne snapshoty z opisem (max 50 ostatnich)',
+      'Panel 🕓 Historia z przyciskami Przywróć / Pobierz / Usuń',
+      'Inteligentne klucze locale: TRUCKER_PERK_LONG_DISTANCE_LABEL zamiast duplikowanego prefixu',
     ],
   },
   {
     version: '1.2.0',
-    date: '2026-04-30',
-    title: 'Multi-select i tryb przesuwania',
-    tags: ['new'],
+    date: '30.04.2026',
     items: [
-      '<strong>Zaznaczanie prostokątem</strong> (jak na pulpicie): przeciągnij na pustym miejscu, żeby wybrać kilka perków na raz.',
-      '<strong>Shift / Ctrl + klik</strong> = dodaj/usuń perk z grupy.',
-      '<strong>Drag grupowy</strong>: przesuwasz cały zaznaczony zestaw, zachowując odległości.',
-      '<strong>Ctrl+A</strong> = zaznacz wszystkie, <strong>Delete</strong> = usuń całą grupę, <strong>Ctrl+D</strong> = duplikuj z zachowaniem zależności.',
-      '<strong>Przycisk ✋ Pan mode</strong>: przełącz na tryb "lewy klik = pan widoku". W trybie zaznaczania pan robisz przez Alt+klik lub środkowy przycisk myszy.',
+      'Dodano zaznaczanie prostokątem – przeciągnij na pustym miejscu #UI',
+      'Shift / Ctrl + klik = dodaj/usuń perk z grupy',
+      'Drag grupowy z zachowaniem odległości',
+      'Ctrl+A = zaznacz wszystkie, Delete = usuń grupę, Ctrl+D = duplikuj',
+      'Dodano przycisk ✋ Pan mode – tryb przesuwania widoku',
     ],
   },
   {
     version: '1.1.0',
-    date: '2026-04-29',
-    title: 'Logowanie i synchronizacja w czasie rzeczywistym',
-    tags: ['new', 'breaking'],
+    date: '29.04.2026',
     items: [
-      '<strong>Wymagane logowanie</strong>: dostęp do edytora dopiero po podaniu email + hasła (Supabase Auth).',
-      '<strong>Realtime sync</strong>: zmiany u jednej osoby pojawiają się natychmiast u pozostałych zalogowanych przez WebSocket.',
-      '<strong>RLS policies</strong>: tabele dostępne tylko dla zalogowanych, anonimowi użytkownicy zablokowani.',
-      'Przycisk wylogowania ⏻ w lewym panelu.',
+      'Wymagane logowanie – dostęp dopiero po Supabase Auth #Auth',
+      'Realtime sync – zmiany u jednej osoby pojawiają się natychmiast u pozostałych #Sync',
+      'RLS policies – tabele dostępne tylko dla zalogowanych',
+      'Przycisk wylogowania ⏻ w lewym panelu',
     ],
   },
   {
     version: '1.0.0',
-    date: '2026-04-28',
-    title: 'Pierwsza wersja Skilltree Studio',
-    tags: ['new'],
+    date: '28.04.2026',
     items: [
-      'Edytor drzewek perków dla <code>prp-perks</code> w stylu Path of Exile.',
-      'Cztery kategorie: Ogólne (character), Cywil (civ), Crime, Frakcje (trucker).',
-      'Backend: Supabase Postgres + WebSocket realtime.',
-      'Edycja: dodawanie perków, łączenie zależności, edytor pól (label/desc/efekty/wymagania).',
-      'Eksport / import JSON.',
+      'Pierwsza wersja Skilltree Studio',
+      'Edytor drzewek perków dla prp-perks w stylu Path of Exile',
+      'Cztery kategorie: Ogólne / Cywil / Crime / Frakcje',
+      'Backend: Supabase Postgres + WebSocket realtime',
+      'Eksport / import JSON',
     ],
   },
 ];
@@ -3437,29 +3693,28 @@ const Updates = (() => {
 function openUpdatesModal(){
   const wrap = $('#updatesList');
   wrap.innerHTML = '';
-  const lastSeen = (function(){ try { return localStorage.getItem('skilltree_last_seen_update') || ''; } catch(e){ return ''; } })();
 
   APP_UPDATES.forEach((upd, idx) => {
     const isLatest = idx === 0;
-    const isNewSinceLastVisit = upd.version !== lastSeen && idx === 0;
     const div = document.createElement('div');
-    div.className = 'update-entry' + (isLatest ? ' update-latest' : '');
+    div.className = 'changelog-entry' + (isLatest ? ' is-latest' : '');
 
-    const tagsHtml = (upd.tags || []).map(t => {
-      const map = { new: 'Nowość', fix: 'Poprawka', breaking: 'Breaking' };
-      return '<span class="update-tag tag-' + t + '">' + (map[t] || t) + '</span>';
+    // Items: każdy item to plain string z ewentualnym hashtagiem #Tag na końcu.
+    // Pozwalamy też na <code>...</code> (bezpieczne tagi) bo w changelog często są.
+    const itemsHtml = (upd.items || []).map(text => {
+      // Bezpieczeństwo: escapujemy wszystko poza <code>...</code>
+      let safe = text.replace(/<(?!\/?(code|strong|em|b|i)\b)[^>]*>/gi, '');
+      // Auto-styling hashtagów na końcu wpisu (np. "...#Crime" lub " #Crime")
+      safe = safe.replace(/(\s)#([A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9_-]+)/g, '$1<span class="cl-tag">#$2</span>');
+      return '<li>' + safe + '</li>';
     }).join('');
 
-    const itemsHtml = (upd.items || []).map(i => '<li>' + i + '</li>').join('');
-
     div.innerHTML =
-      '<div class="update-head">' +
-        '<span class="update-version">v' + escapeHtml(upd.version) + '</span>' +
-        '<span class="update-date">' + escapeHtml(upd.date) + '</span>' +
-        tagsHtml +
+      '<div class="cl-head">' +
+        '<span class="cl-title">Changelog ' + escapeHtml(upd.date) + '</span>' +
+        '<span class="cl-version">v' + escapeHtml(upd.version) + '</span>' +
       '</div>' +
-      '<div class="update-title">' + escapeHtml(upd.title) + '</div>' +
-      '<ul>' + itemsHtml + '</ul>';
+      '<ul class="cl-items">' + itemsHtml + '</ul>';
 
     wrap.appendChild(div);
   });
@@ -3471,6 +3726,468 @@ function openUpdatesModal(){
 
 function closeUpdatesModal(){
   $('#updatesModal').classList.remove('show');
+}
+
+// ============= WYSZUKIWARKA PERKÓW =============
+
+const PerkSearch = (() => {
+  let state = {
+    query: '',
+    catFilter: 'all',     // 'all' | 'general' | 'civ' | 'crime' | 'faction'
+    flagFilter: null,     // null | 'spec' | 'good' | 'evil'
+  };
+
+  function buildIndex(){
+    const items = [];
+    for (const [catId, cat] of Object.entries(STATE.data.types || {})) {
+      for (const [specId, spec] of Object.entries(cat.specializations || {})) {
+        for (const [perkId, perk] of Object.entries(spec.perks || {})) {
+          const desc = (perk.levels && perk.levels[0] && perk.levels[0].desc) || '';
+          items.push({
+            catId, specId, perkId,
+            label: perk.label || perkId,
+            desc: desc,
+            isSpec: !!perk.isSpec,
+            specColor: perk.specColor || null,
+            alignment: perk.alignment || 'neutral',
+            specLabel: spec.label || specId,
+            catName: (CATEGORIES.find(c => c.id === catId) || {}).name || catId,
+            catAccent: (CATEGORIES.find(c => c.id === catId) || {}).accent || '#888',
+            haystack: (perk.label + ' ' + perkId + ' ' + desc).toLowerCase(),
+          });
+        }
+      }
+    }
+    return items;
+  }
+
+  function filter(items){
+    const q = state.query.trim().toLowerCase();
+    return items.filter(it => {
+      if (state.catFilter !== 'all' && it.catId !== state.catFilter) return false;
+      if (state.flagFilter === 'spec' && !it.isSpec) return false;
+      if (state.flagFilter === 'good' && it.alignment !== 'good') return false;
+      if (state.flagFilter === 'evil' && it.alignment !== 'evil') return false;
+      if (q && !it.haystack.includes(q)) return false;
+      return true;
+    });
+  }
+
+  function renderResults(){
+    const wrap = $('#searchResults');
+    const items = filter(buildIndex());
+    if (items.length === 0) {
+      wrap.innerHTML = '<div class="search-empty">Brak wyników.<br><span style="font-size:11px;">Spróbuj innego zapytania lub zmień filtry.</span></div>';
+      return;
+    }
+    wrap.innerHTML = items.slice(0, 80).map(it => {
+      const tags = [];
+      if (it.isSpec) tags.push('<span class="search-tag spec">Spec</span>');
+      if (it.alignment === 'good') tags.push('<span class="search-tag good">Good</span>');
+      if (it.alignment === 'evil') tags.push('<span class="search-tag evil">Evil</span>');
+      const iconColor = (it.isSpec && it.specColor) ? it.specColor : it.catAccent;
+      const iconCls = it.isSpec ? 'search-result-icon is-spec' : 'search-result-icon';
+      return '<div class="search-result" data-jump="' + escapeHtml(it.catId) + '|' + escapeHtml(it.specId) + '|' + escapeHtml(it.perkId) + '" style="--cat-color: ' + escapeHtml(iconColor) + ';">' +
+          '<div class="' + iconCls + '">' + escapeHtml((it.label || '?').charAt(0).toUpperCase()) + '</div>' +
+          '<div class="search-result-body">' +
+            '<div class="search-result-label">' + escapeHtml(it.label) + '</div>' +
+            '<div class="search-result-meta">' + escapeHtml(it.catName) + ' › ' + escapeHtml(it.specLabel) + ' · <span style="opacity:0.7;">' + escapeHtml(it.perkId) + '</span></div>' +
+            (it.desc ? '<div class="search-result-desc">' + escapeHtml(it.desc) + '</div>' : '') +
+          '</div>' +
+          '<div class="search-result-tags">' + tags.join('') + '</div>' +
+        '</div>';
+    }).join('') + (items.length > 80 ? '<div class="search-empty" style="padding:14px;">+ ' + (items.length - 80) + ' więcej. Doprecyzuj zapytanie.</div>' : '');
+
+    wrap.querySelectorAll('[data-jump]').forEach(el => {
+      el.onclick = () => {
+        const [catId, specId, perkId] = el.dataset.jump.split('|');
+        jumpToPerk(catId, specId, perkId);
+      };
+    });
+  }
+
+  function jumpToPerk(catId, specId, perkId){
+    STATE.ui.activeCategory = catId;
+    STATE.ui.activeSpecId = specId;
+    STATE.ui.selectedPerkId = perkId;
+    STATE.ui.selectedPerkIds.clear();
+    STATE.ui.selectedPerkIds.add(perkId);
+    // Wyśrodkuj viewport na perku
+    const perk = STATE.data.types[catId] && STATE.data.types[catId].specializations[specId]
+      && STATE.data.types[catId].specializations[specId].perks[perkId];
+    if (perk) {
+      const vp = $('#canvasWrap');
+      if (vp) {
+        const cx = vp.clientWidth / 2;
+        const cy = vp.clientHeight / 2;
+        STATE.ui.pan.x = cx - perk.x;
+        STATE.ui.pan.y = cy - perk.y;
+        STATE.ui.zoom = 1;
+      }
+    }
+    closeAllModals();
+    renderAll();
+  }
+
+  function open(){
+    state = { query: '', catFilter: 'all', flagFilter: null };
+    $('#searchInput').value = '';
+    $$('#searchFilters [data-search-cat]').forEach(b => b.classList.toggle('active', b.dataset.searchCat === 'all'));
+    $$('#searchFilters [data-search-flag]').forEach(b => b.classList.remove('active'));
+    renderResults();
+    $('#searchModal').classList.add('show');
+    setTimeout(() => $('#searchInput').focus(), 50);
+  }
+  function close(){ $('#searchModal').classList.remove('show'); }
+
+  function setQuery(q){ state.query = q; renderResults(); }
+  function setCat(c){ state.catFilter = c; renderResults(); }
+  function setFlag(f){ state.flagFilter = (state.flagFilter === f ? null : f); renderResults(); }
+
+  return { open, close, setQuery, setCat, setFlag, jumpToPerk };
+})();
+
+// ============= WALIDACJA =============
+
+const Validate = (() => {
+  function findIssues(){
+    const issues = [];
+    for (const [catId, cat] of Object.entries(STATE.data.types || {})) {
+      const catName = (CATEGORIES.find(c => c.id === catId) || {}).name || catId;
+      for (const [specId, spec] of Object.entries(cat.specializations || {})) {
+        const specLabel = spec.label || specId;
+        // Specjalizacja bez nazwy / opisu
+        if (!spec.label || !spec.label.trim()) {
+          issues.push({ severity: 'warning', type: 'spec_no_label', location: catId + '/' + specId,
+            displayLoc: catName + ' › ' + specId, message: 'Drzewko bez nazwy', perkId: null, catId, specId });
+        }
+        if (!spec.desc || !spec.desc.trim()) {
+          issues.push({ severity: 'warning', type: 'spec_no_desc', location: catId + '/' + specId,
+            displayLoc: catName + ' › ' + specLabel, message: 'Drzewko bez opisu', perkId: null, catId, specId });
+        }
+
+        // Perki
+        const perkIds = Object.keys(spec.perks || {});
+        for (const perkId of perkIds) {
+          const perk = spec.perks[perkId];
+          const perkName = perk.label || perkId;
+
+          if (!perk.label || !perk.label.trim()) {
+            issues.push({ severity: 'warning', type: 'perk_no_label', location: catId + '/' + specId + '/' + perkId,
+              displayLoc: catName + ' › ' + specLabel + ' › ' + perkId,
+              message: 'Perk bez nazwy', perkId, catId, specId });
+          }
+          const desc = perk.levels && perk.levels[0] && perk.levels[0].desc;
+          if (!desc || !desc.trim()) {
+            issues.push({ severity: 'warning', type: 'perk_no_desc', location: catId + '/' + specId + '/' + perkId,
+              displayLoc: catName + ' › ' + specLabel + ' › ' + perkName,
+              message: 'Perk "' + perkName + '" nie ma opisu', perkId, catId, specId });
+          }
+
+          // Oderwane wymagania (req-perk nie istnieje w tym samym drzewku)
+          for (const reqId of Object.keys(perk.requiredPerks || {})) {
+            if (!spec.perks[reqId]) {
+              issues.push({ severity: 'error', type: 'orphan_req', location: catId + '/' + specId + '/' + perkId,
+                displayLoc: catName + ' › ' + specLabel + ' › ' + perkName,
+                message: 'Wymaga nieistniejącego perka: "' + reqId + '"', perkId, catId, specId });
+            }
+          }
+
+          // Cykl (czy z perka da się wrócić do siebie)
+          if (hasCycle(spec, perkId)) {
+            issues.push({ severity: 'error', type: 'cycle', location: catId + '/' + specId + '/' + perkId,
+              displayLoc: catName + ' › ' + specLabel + ' › ' + perkName,
+              message: 'Cykl w zależnościach: "' + perkName + '"', perkId, catId, specId });
+          }
+
+          // Spec perk bez ustawionego koloru i bez koloru drzewka
+          if (perk.isSpec && !perk.specColor && !spec.color) {
+            issues.push({ severity: 'warning', type: 'spec_no_color', location: catId + '/' + specId + '/' + perkId,
+              displayLoc: catName + ' › ' + specLabel + ' › ' + perkName,
+              message: 'Perk specjalizacji bez koloru', perkId, catId, specId });
+          }
+
+          // requiredLevel = 0 lub ujemny
+          if (perk.requiredLevel < 1) {
+            issues.push({ severity: 'warning', type: 'invalid_level', location: catId + '/' + specId + '/' + perkId,
+              displayLoc: catName + ' › ' + specLabel + ' › ' + perkName,
+              message: 'requiredLevel < 1 (jest: ' + perk.requiredLevel + ')', perkId, catId, specId });
+          }
+        }
+      }
+    }
+    return issues;
+  }
+
+  function hasCycle(spec, startId){
+    const visited = new Set();
+    function reach(id){
+      if (id === startId && visited.size > 0) return true;
+      if (visited.has(id)) return false;
+      visited.add(id);
+      const p = spec.perks[id];
+      if (!p) return false;
+      return Object.keys(p.requiredPerks || {}).some(reach);
+    }
+    const start = spec.perks[startId];
+    if (!start) return false;
+    return Object.keys(start.requiredPerks || {}).some(reach);
+  }
+
+  function refreshDot(){
+    const dot = $('#validateDot');
+    if (!dot) return;
+    const issues = findIssues();
+    const errCount = issues.filter(i => i.severity === 'error').length;
+    if (errCount > 0) {
+      dot.style.display = 'inline-block';
+      dot.style.background = 'var(--acc-danger)';
+    } else {
+      dot.style.display = 'none';
+    }
+  }
+
+  function open(){
+    const issues = findIssues();
+    const errCount = issues.filter(i => i.severity === 'error').length;
+    const warnCount = issues.filter(i => i.severity === 'warning').length;
+
+    const summary = $('#validateSummary');
+    if (issues.length === 0) {
+      summary.className = 'validate-summary ok';
+      summary.textContent = '✓ Wszystko ok – nie znaleziono problemów.';
+    } else if (errCount > 0) {
+      summary.className = 'validate-summary err';
+      summary.textContent = '✗ Znaleziono ' + errCount + ' błąd' + (errCount === 1 ? '' : (errCount < 5 ? 'y' : 'ów')) +
+        (warnCount > 0 ? ' i ' + warnCount + ' ostrzeż' + (warnCount === 1 ? 'enie' : 'eń') : '') + '.';
+    } else {
+      summary.className = 'validate-summary warn';
+      summary.textContent = '⚠ ' + warnCount + ' ostrzeż' + (warnCount === 1 ? 'enie' : 'eń') + ' (nic krytycznego).';
+    }
+
+    const list = $('#validateList');
+    list.innerHTML = issues.map(it => {
+      const sev = it.severity;
+      const icon = sev === 'error' ? '!' : '?';
+      return '<div class="issue-item severity-' + sev + '" data-jump="' + escapeHtml(it.catId || '') + '|' + escapeHtml(it.specId || '') + '|' + escapeHtml(it.perkId || '') + '">' +
+        '<div class="issue-icon severity-' + sev + '">' + icon + '</div>' +
+        '<div>' +
+          '<div class="issue-message">' + escapeHtml(it.message) + '</div>' +
+          '<div class="issue-location">' + escapeHtml(it.displayLoc) + '</div>' +
+        '</div>' +
+        '<span class="issue-goto">→</span>' +
+      '</div>';
+    }).join('');
+
+    list.querySelectorAll('[data-jump]').forEach(el => {
+      el.onclick = () => {
+        const [catId, specId, perkId] = el.dataset.jump.split('|');
+        if (perkId) {
+          PerkSearch.jumpToPerk(catId, specId, perkId);
+        } else if (specId) {
+          STATE.ui.activeCategory = catId;
+          STATE.ui.activeSpecId = specId;
+          closeAllModals();
+          renderAll();
+        }
+      };
+    });
+
+    $('#validateModal').classList.add('show');
+  }
+
+  function close(){ $('#validateModal').classList.remove('show'); }
+
+  return { open, close, refreshDot, findIssues };
+})();
+
+// ============= AUDIT LOG =============
+
+const AuditLog = (() => {
+  async function fetchRecent(limit){
+    try {
+      const sb = window.sb || (window.Sync && Sync.getClient && Sync.getClient());
+      const client = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+      if (!client) throw new Error('Brak klienta Supabase');
+      const { data, error } = await client.rpc('get_audit_log', { p_limit: limit || 50 });
+      if (error) throw new Error(error.message);
+      return data || [];
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  function formatTime(iso){
+    const d = new Date(iso);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    const pad = (n) => String(n).padStart(2, '0');
+    if (sameDay) return pad(d.getHours()) + ':' + pad(d.getMinutes());
+    return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  async function open(){
+    $('#auditModal').classList.add('show');
+    const list = $('#auditList');
+    list.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px;">Wczytuję…</p>';
+    try {
+      const rows = await fetchRecent(50);
+      if (!rows || rows.length === 0) {
+        list.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px;">Brak wpisów. Zacznij coś edytować ;)</p>';
+        return;
+      }
+      list.innerHTML = rows.map(r => {
+        const cat = CATEGORIES.find(c => c.id === r.category_id);
+        const accent = cat ? cat.accent : 'var(--line-2)';
+        const actor = r.actor ? r.actor.slice(-6) : '?';
+        return '<div class="audit-item" style="--cat-color:' + escapeHtml(accent) + ';">' +
+          '<span class="audit-time">' + escapeHtml(formatTime(r.created_at)) + '</span>' +
+          '<span class="audit-op ' + r.operation + '">' + r.operation + '</span>' +
+          '<span class="audit-summary">' + escapeHtml(r.summary || '') + '</span>' +
+          '<span class="audit-actor" title="Pełny ID klienta: ' + escapeHtml(r.actor || '') + '">…' + escapeHtml(actor) + '</span>' +
+        '</div>';
+      }).join('');
+    } catch (e) {
+      list.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px; color:var(--acc-danger);">Błąd: ' + escapeHtml(e.message) + '</p>';
+    }
+  }
+
+  function close(){ $('#auditModal').classList.remove('show'); }
+
+  return { open, close };
+})();
+
+// ============= DIFF SNAPSHOTS =============
+
+const SnapshotDiff = (() => {
+  function flattenPerks(data){
+    const map = {};
+    for (const [catId, cat] of Object.entries(data.types || {})) {
+      for (const [specId, spec] of Object.entries(cat.specializations || {})) {
+        for (const [perkId, perk] of Object.entries(spec.perks || {})) {
+          map[catId + '/' + specId + '/' + perkId] = {
+            catId, specId, perkId, perk,
+            label: perk.label || perkId,
+          };
+        }
+      }
+    }
+    return map;
+  }
+
+  function comparePerks(a, b){
+    const changes = [];
+    const keys = ['label', 'requiredLevel', 'image', 'isSpec', 'specColor', 'alignment'];
+    for (const k of keys) {
+      if ((a[k] || null) !== (b[k] || null)) {
+        changes.push({ key: k, before: a[k], after: b[k] });
+      }
+    }
+    // desc (z levels[0])
+    const aDesc = a.levels && a.levels[0] ? (a.levels[0].desc || '') : '';
+    const bDesc = b.levels && b.levels[0] ? (b.levels[0].desc || '') : '';
+    if (aDesc !== bDesc) changes.push({ key: 'desc', before: aDesc, after: bDesc });
+    // requiredPerks (jako stringified set)
+    const aReq = JSON.stringify(a.requiredPerks || {});
+    const bReq = JSON.stringify(b.requiredPerks || {});
+    if (aReq !== bReq) changes.push({ key: 'requiredPerks', before: aReq, after: bReq });
+    return changes;
+  }
+
+  function diff(snapData, currentData){
+    const oldMap = flattenPerks(snapData);
+    const newMap = flattenPerks(currentData);
+    const removed = [];
+    const added = [];
+    const changed = [];
+
+    for (const key of Object.keys(oldMap)) {
+      if (!newMap[key]) {
+        removed.push(oldMap[key]);
+      } else {
+        const c = comparePerks(oldMap[key].perk, newMap[key].perk);
+        if (c.length > 0) changed.push({ ...newMap[key], changes: c });
+      }
+    }
+    for (const key of Object.keys(newMap)) {
+      if (!oldMap[key]) added.push(newMap[key]);
+    }
+    return { removed, added, changed };
+  }
+
+  async function open(snapshotId){
+    $('#diffModal').classList.add('show');
+    const meta = $('#diffMeta');
+    const body = $('#diffBody');
+    meta.textContent = 'Wczytuję snapshot…';
+    body.innerHTML = '';
+    try {
+      const snap = await Snapshots.load(snapshotId);
+      if (!snap || !snap.data) throw new Error('Snapshot pusty');
+      const result = diff(snap.data, STATE.data);
+
+      const dt = new Date(snap.created_at).toLocaleString('pl-PL');
+      meta.innerHTML = 'Snapshot z <strong>' + escapeHtml(dt) + '</strong>' +
+        (snap.label ? ' (' + escapeHtml(snap.label) + ')' : '') + ' vs aktualny stan.';
+
+      const total = result.added.length + result.removed.length + result.changed.length;
+      if (total === 0) {
+        body.innerHTML = '<div class="validate-summary ok">✓ Brak różnic – stan identyczny.</div>';
+        return;
+      }
+
+      let html = '';
+      if (result.added.length > 0) {
+        html += '<div class="diff-section"><h4>Dodane (' + result.added.length + ')</h4>';
+        result.added.forEach(it => {
+          html += '<div class="diff-row added"><span class="diff-marker">+</span>' +
+            '<span class="diff-label">' + escapeHtml(it.label) + '</span>' +
+            '<span class="diff-loc">' + escapeHtml(it.catId + '/' + it.specId) + '</span>' +
+          '</div>';
+        });
+        html += '</div>';
+      }
+      if (result.removed.length > 0) {
+        html += '<div class="diff-section"><h4>Usunięte (' + result.removed.length + ')</h4>';
+        result.removed.forEach(it => {
+          html += '<div class="diff-row removed"><span class="diff-marker">−</span>' +
+            '<span class="diff-label">' + escapeHtml(it.label) + '</span>' +
+            '<span class="diff-loc">' + escapeHtml(it.catId + '/' + it.specId) + '</span>' +
+          '</div>';
+        });
+        html += '</div>';
+      }
+      if (result.changed.length > 0) {
+        html += '<div class="diff-section"><h4>Zmienione (' + result.changed.length + ')</h4>';
+        result.changed.forEach(it => {
+          const changeStrings = it.changes.map(c => {
+            const before = c.before == null || c.before === '' ? '∅' : String(c.before).slice(0, 40);
+            const after  = c.after  == null || c.after  === '' ? '∅' : String(c.after).slice(0, 40);
+            return '<span class="ck">' + escapeHtml(c.key) + ':</span> <span class="cb">' + escapeHtml(before) + '</span> → <span class="ca">' + escapeHtml(after) + '</span>';
+          }).join('  ·  ');
+          html += '<div class="diff-row changed">' +
+            '<span class="diff-marker">~</span>' +
+            '<span class="diff-label">' + escapeHtml(it.label) + '</span>' +
+            '<span class="diff-loc">' + escapeHtml(it.catId + '/' + it.specId) + '</span>' +
+            '<span class="diff-changes">' + changeStrings + '</span>' +
+          '</div>';
+        });
+        html += '</div>';
+      }
+      body.innerHTML = html;
+    } catch (e) {
+      body.innerHTML = '<div class="validate-summary err">Błąd: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+
+  function close(){ $('#diffModal').classList.remove('show'); }
+
+  return { open, close };
+})();
+
+// ============= Helper: zamknij wszystkie modale =============
+function closeAllModals(){
+  document.querySelectorAll('.modal-bd.show').forEach(m => m.classList.remove('show'));
 }
 
 function openChangelogModal(){
@@ -3510,6 +4227,7 @@ async function refreshChangelogList(){
       '<div class="changelog-summary">' + escapeHtml(summaryStr) + '</div>' +
       '<div class="changelog-actions">' +
         '<button class="tool-btn" data-snap-restore="' + it.id + '">Przywróć</button>' +
+        '<button class="tool-btn" data-snap-diff="' + it.id + '">Porównaj</button>' +
         '<button class="tool-btn" data-snap-lua="' + it.id + '">Pobierz .lua</button>' +
         '<button class="tool-btn" data-snap-json="' + it.id + '">.json</button>' +
         '<button class="icon-btn-sm danger" data-snap-del="' + it.id + '" title="Usuń">⌫</button>' +
@@ -3583,6 +4301,9 @@ async function refreshChangelogList(){
         btn.disabled = false; btn.textContent = 'Przywróć';
       }
     };
+  });
+  wrap.querySelectorAll('[data-snap-diff]').forEach(btn => {
+    btn.onclick = () => SnapshotDiff.open(btn.dataset.snapDiff);
   });
   wrap.querySelectorAll('[data-snap-lua]').forEach(btn => {
     btn.onclick = async () => {
@@ -3742,6 +4463,9 @@ function init(){
   $('#snapshotBtn').onclick = takeManualSnapshot;
   $('#changelogBtn').onclick = openChangelogModal;
   $('#updatesBtn').onclick = openUpdatesModal;
+  $('#searchBtn').onclick = () => PerkSearch.open();
+  $('#validateBtn').onclick = () => Validate.open();
+  $('#auditBtn').onclick = () => AuditLog.open();
   $('#changelogManualBtn').onclick = takeManualSnapshot;
   $('#changelogLuaCurrentBtn').onclick = () => exportLua(null, { mode: 'inline' });
 
@@ -3765,11 +4489,45 @@ function init(){
     if (a === 'apply-io') applyImport();
     if (a === 'close-changelog') closeChangelogModal();
     if (a === 'close-updates') closeUpdatesModal();
+    if (a === 'close-search') PerkSearch.close();
+    if (a === 'close-validate') Validate.close();
+    if (a === 'close-audit') AuditLog.close();
+    if (a === 'close-diff') SnapshotDiff.close();
   });
   $('#specModal').onclick = (e) => { if (e.target.id === 'specModal') closeSpecModal(); };
   $('#ioModal').onclick = (e) => { if (e.target.id === 'ioModal') closeIoModal(); };
   $('#changelogModal').onclick = (e) => { if (e.target.id === 'changelogModal') closeChangelogModal(); };
   $('#updatesModal').onclick = (e) => { if (e.target.id === 'updatesModal') closeUpdatesModal(); };
+  $('#searchModal').onclick = (e) => { if (e.target.id === 'searchModal') PerkSearch.close(); };
+  $('#validateModal').onclick = (e) => { if (e.target.id === 'validateModal') Validate.close(); };
+  $('#auditModal').onclick = (e) => { if (e.target.id === 'auditModal') AuditLog.close(); };
+  $('#diffModal').onclick = (e) => { if (e.target.id === 'diffModal') SnapshotDiff.close(); };
+
+  // Search input + filtry
+  $('#searchInput').addEventListener('input', (e) => PerkSearch.setQuery(e.target.value));
+  $$('#searchFilters [data-search-cat]').forEach(b => {
+    b.onclick = () => {
+      $$('#searchFilters [data-search-cat]').forEach(x => x.classList.toggle('active', x === b));
+      PerkSearch.setCat(b.dataset.searchCat);
+    };
+  });
+  $$('#searchFilters [data-search-flag]').forEach(b => {
+    b.onclick = () => {
+      const flag = b.dataset.searchFlag;
+      const willActivate = !b.classList.contains('active');
+      $$('#searchFilters [data-search-flag]').forEach(x => x.classList.remove('active'));
+      if (willActivate) b.classList.add('active');
+      PerkSearch.setFlag(flag);
+    };
+  });
+
+  // Ctrl+K otwiera wyszukiwarkę
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      PerkSearch.open();
+    }
+  });
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, select')) return;
@@ -3779,7 +4537,7 @@ function init(){
     } else if (e.key === 'Escape') {
       if (STATE.ui.connectMode) toggleConnectMode();
       else if (STATE.ui.selectedPerkIds.size > 0) { clearSelection(); renderAll(); }
-      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); }
+      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); PerkSearch.close(); Validate.close(); AuditLog.close(); SnapshotDiff.close(); }
     } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicatePerk();
@@ -3955,6 +4713,8 @@ function bootApp(){
     Snapshots.startAutoTimer();
     // Sprawdź czy są nieprzeczytane aktualizacje edytora
     Updates.refreshDot();
+    // Pokaż czerwoną kropkę przy Walidacji jeśli są błędy
+    Validate.refreshDot();
   }).catch(e => {
     showToast('Nie udało się połączyć z serwerem: ' + e.message, 'error');
     console.error(e);
