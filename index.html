@@ -164,6 +164,40 @@
     flex-direction: column;
     gap: 10px;
   }
+  .auth-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    padding: 3px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+  }
+  .auth-tab {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-3);
+    font-size: 12.5px;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    transition: all 0.1s;
+  }
+  .auth-tab:hover { color: var(--text-2); }
+  .auth-tab.active {
+    background: var(--bg-3);
+    color: var(--text-1);
+    font-weight: 600;
+  }
+  .auth-hint {
+    font-size: 11px;
+    color: var(--text-3);
+    text-align: center;
+    margin: 4px 0 0 0;
+    line-height: 1.5;
+  }
   .auth-fields input {
     padding: 11px 14px;
     font-size: 13.5px;
@@ -543,6 +577,38 @@
   }
   .perk-node.dragging .perk-shape { opacity: 0.85; }
 
+  /* ===== Approval status glow ===== */
+  .perk-node.approval-approved .perk-shape {
+    stroke: #6ab07a;
+    stroke-width: 2.5;
+    filter: drop-shadow(0 0 10px rgba(106,176,122,0.65));
+  }
+  .perk-node.approval-rejected .perk-shape {
+    stroke: #c75959;
+    stroke-width: 2.5;
+    filter: drop-shadow(0 0 10px rgba(199,89,89,0.7));
+  }
+  .perk-node.approval-needs-changes .perk-shape {
+    stroke: var(--acc-points);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 8px rgba(170,155,110,0.55));
+  }
+  .perk-node.approval-in-review .perk-shape {
+    stroke: #788494;
+    stroke-width: 1.8;
+    stroke-dasharray: 4 3;
+  }
+  /* Spec perki: approval glow zostaje (ma własny filter drop-shadow), nadpisuje go silniej */
+  .perk-node.is-spec.approval-approved .perk-shape {
+    filter: drop-shadow(0 0 12px var(--perk-glow, rgba(170,155,110,0.5))) drop-shadow(0 0 16px rgba(106,176,122,0.55));
+  }
+  .perk-node.is-spec.approval-rejected .perk-shape {
+    filter: drop-shadow(0 0 12px var(--perk-glow, rgba(170,155,110,0.5))) drop-shadow(0 0 16px rgba(199,89,89,0.65));
+  }
+  /* Selected ma stronger stroke ale glow zostaje */
+  .perk-node.approval-approved.selected .perk-shape { stroke: var(--acc-points); }
+  .perk-node.approval-rejected.selected .perk-shape { stroke: var(--acc-points); }
+
   /* ===== Perk specjalizacji – większy + custom kolor + glow ===== */
   .perk-node.is-spec .perk-shape {
     fill: var(--perk-color, var(--bg-2));
@@ -640,6 +706,16 @@
     transition: stroke 0.1s;
   }
   .edge-line:hover { stroke: var(--text-2); stroke-width: 2; }
+
+  .exclusion-line {
+    fill: none;
+    stroke: rgba(199,89,89,0.5);
+    stroke-width: 2;
+    stroke-dasharray: 2 5;
+    cursor: pointer;
+    transition: stroke 0.1s;
+  }
+  .exclusion-line:hover { stroke: rgba(220,110,110,0.9); stroke-width: 2.5; }
 
   /* RIGHT PANEL */
   .right-panel {
@@ -941,7 +1017,376 @@
     margin-left: auto;
   }
 
-  /* ===== Changelog flat-list ===== */
+  /* ===== AI Asystent ===== */
+  .ai-tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--line-1);
+    margin-bottom: 16px;
+  }
+  .ai-tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-3);
+    font-size: 12.5px;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    margin-bottom: -1px;
+  }
+  .ai-tab:hover { color: var(--text-2); }
+  .ai-tab.active {
+    color: var(--text-1);
+    border-bottom-color: var(--acc-points);
+    font-weight: 600;
+  }
+  .ai-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .ai-controls .tool-btn { padding: 9px 18px; }
+  .ai-cost-hint {
+    font-size: 10.5px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 9px;
+  }
+  .ai-loading {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-3);
+    font-size: 13px;
+  }
+  .ai-loading::before {
+    content: "✨";
+    display: inline-block;
+    margin-right: 6px;
+    animation: pulse-dot 1.2s ease-in-out infinite;
+  }
+  .ai-error {
+    padding: 12px 14px;
+    background: rgba(199,89,89,0.1);
+    border: 1px solid rgba(199,89,89,0.3);
+    border-radius: var(--radius-sm);
+    color: #e0a8a8;
+    font-size: 12.5px;
+    margin-top: 12px;
+  }
+
+  /* Karty sugestii */
+  .ai-suggestion {
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-left: 3px solid var(--cat-color, var(--acc-points));
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .ai-suggestion.added { opacity: 0.5; border-left-color: #6ab07a; }
+  .ai-sug-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .ai-sug-label {
+    font-size: 14px; font-weight: 600; color: var(--text-1);
+  }
+  .ai-sug-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+  .ai-sug-tags {
+    display: flex; gap: 4px; margin-left: auto;
+  }
+  .ai-sug-tag {
+    font-size: 9.5px; padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg-3); color: var(--text-3);
+  }
+  .ai-sug-tag.spec  { background: rgba(170,155,110,0.18); color: var(--acc-points); }
+  .ai-sug-tag.good  { background: rgba(106,176,122,0.18); color: #a3d4ad; }
+  .ai-sug-tag.evil  { background: rgba(199,89,89,0.18);   color: #e0a8a8; }
+  .ai-sug-desc {
+    font-size: 12.5px; color: var(--text-2);
+    line-height: 1.5; margin-bottom: 8px;
+  }
+  .ai-sug-meta {
+    font-size: 11px; color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 10px;
+  }
+  .ai-sug-rationale {
+    font-size: 11.5px; color: var(--text-3);
+    font-style: italic; padding: 8px 10px;
+    background: var(--bg-3); border-radius: 4px;
+    border-left: 2px solid var(--line-2);
+    margin-bottom: 10px;
+  }
+  .ai-sug-actions {
+    display: flex; gap: 6px;
+  }
+
+  /* Audyt */
+  .ai-audit-summary {
+    padding: 14px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-sm);
+    color: var(--text-1);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .ai-audit-summary::before {
+    content: "✨ ";
+  }
+  .ai-audit-issue {
+    padding: 9px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-left: 3px solid var(--line-2);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+  }
+  .ai-audit-issue.severity-error   { border-left-color: var(--acc-danger); }
+  .ai-audit-issue.severity-warning { border-left-color: var(--acc-points); }
+  .ai-audit-issue.severity-info    { border-left-color: #788494; }
+  .ai-audit-issue-msg {
+    font-size: 12.5px; color: var(--text-1);
+    margin-bottom: 4px; font-weight: 500;
+  }
+  .ai-audit-issue-suggestion {
+    font-size: 11.5px; color: var(--text-2);
+    line-height: 1.5;
+  }
+  .ai-audit-issue-perks {
+    font-size: 10.5px; color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 4px;
+  }
+  .ai-audit-issue-perks span {
+    background: var(--bg-3); padding: 1px 5px;
+    border-radius: 3px; margin-right: 3px;
+    cursor: pointer;
+  }
+  .ai-audit-issue-perks span:hover { background: var(--bg-4); color: var(--text-1); }
+
+  /* Inspector: AI complete button */
+  .ai-complete-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: 4px;
+    padding: 4px 9px;
+    color: var(--acc-points);
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: all 0.1s;
+  }
+  .ai-complete-btn:hover { background: var(--bg-3); border-color: var(--acc-points); }
+  .ai-complete-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  /* ===== Panel zaproszeń & użytkowników ===== */
+  .invite-create {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 80px auto;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .invite-create input {
+    padding: 8px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    color: var(--text-1);
+    font-size: 12.5px;
+    font-family: 'Manrope', sans-serif;
+  }
+  .invite-create input.mono { font-family: 'JetBrains Mono', monospace; }
+  .invite-create input:focus { border-color: var(--acc-points); outline: none; }
+
+  .invites-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .invite-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 12px; align-items: center;
+    padding: 9px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+  }
+  .invite-row.depleted { opacity: 0.55; }
+  .invite-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--acc-points);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .invite-code:hover { color: var(--text-1); }
+  .invite-note { color: var(--text-2); }
+  .invite-uses {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+  .invite-creator {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+
+  .user-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 12px; align-items: center;
+    padding: 9px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+  }
+  .user-row.is-admin { border-left: 3px solid var(--acc-points); }
+  .user-name { color: var(--text-1); font-weight: 500; }
+  .user-name.is-admin::after {
+    content: " ★";
+    color: var(--acc-points);
+  }
+  .user-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+
+  /* Badge nazwy użytkownika w nagłówku */
+  .user-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: 999px;
+    color: var(--text-2);
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-right: 8px;
+  }
+
+  /* ===== Inspector: Akceptacja ===== */
+  .approval-status {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    font-size: 12.5px;
+  }
+  .approval-status .approval-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-3);
+    flex-shrink: 0;
+  }
+  .approval-status .approval-tally {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .approval-status.st-pending      { border-left-color: var(--text-3); }
+  .approval-status.st-pending      .approval-dot { background: var(--text-3); }
+  .approval-status.st-in-review    { border-left-color: #788494; }
+  .approval-status.st-in-review    .approval-dot { background: #788494; }
+  .approval-status.st-approved     { border-left-color: #6ab07a; color: #a3d4ad; }
+  .approval-status.st-approved     .approval-dot { background: #6ab07a; box-shadow: 0 0 6px #6ab07a; }
+  .approval-status.st-rejected     { border-left-color: #c75959; color: #e0a8a8; }
+  .approval-status.st-rejected     .approval-dot { background: #c75959; box-shadow: 0 0 6px #c75959; }
+  .approval-status.st-needs-changes{ border-left-color: var(--acc-points); color: var(--acc-points); }
+  .approval-status.st-needs-changes.approval-dot { background: var(--acc-points); }
+
+  .vote-buttons {
+    display: flex; gap: 5px; margin-bottom: 8px;
+  }
+  .vote-btn {
+    flex: 1; padding: 7px 4px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    font-size: 11.5px;
+    font-family: 'Manrope', sans-serif;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .vote-btn:hover { background: var(--bg-3); }
+  .vote-btn:disabled { opacity: 0.5; cursor: wait; }
+  .vote-btn.vote-approve:hover       { border-color: #6ab07a; color: #a3d4ad; }
+  .vote-btn.vote-needs-changes:hover { border-color: var(--acc-points); color: var(--acc-points); }
+  .vote-btn.vote-reject:hover        { border-color: #c75959; color: #e0a8a8; }
+
+  .vote-comment-row { margin-bottom: 10px; }
+  .vote-comment-row input {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    color: var(--text-1);
+    font-size: 12px;
+    font-family: 'Manrope', sans-serif;
+  }
+  .vote-comment-row input:focus { border-color: var(--acc-points); outline: none; }
+
+  .votes-list { display: flex; flex-direction: column; gap: 4px; }
+  .vote-row {
+    display: grid;
+    grid-template-columns: 18px 1fr auto auto;
+    gap: 8px; align-items: center;
+    padding: 6px 8px;
+    background: var(--bg-2);
+    border-left: 2px solid var(--line-2);
+    border-radius: 3px;
+    font-size: 11.5px;
+  }
+  .vote-row.vote-approve       { border-left-color: #6ab07a; }
+  .vote-row.vote-reject        { border-left-color: #c75959; }
+  .vote-row.vote-needs_changes { border-left-color: var(--acc-points); }
+  .vote-sym {
+    font-weight: 700; text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .vote-row.vote-approve .vote-sym       { color: #a3d4ad; }
+  .vote-row.vote-reject .vote-sym        { color: #e0a8a8; }
+  .vote-row.vote-needs_changes .vote-sym { color: var(--acc-points); }
+  .vote-author { color: var(--text-1); font-weight: 500; }
+  .vote-time   { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
+  .vote-row-del {
+    background: transparent; border: none;
+    color: var(--text-3); font-size: 11px;
+    cursor: pointer; padding: 2px 4px;
+  }
+  .vote-row-del:hover { color: var(--acc-danger); }
+  .vote-comment-text {
+    grid-column: 2 / -1;
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--text-2);
+    font-style: italic;
+  }
   .updates-dot {
     display: inline-block;
     width: 7px;
@@ -1258,11 +1703,27 @@
         <h1>Skilltree Studio</h1>
       </div>
       <p class="auth-tagline">Zaloguj się, żeby edytować drzewka.</p>
-      <div class="auth-fields">
-        <input type="email" id="authEmail" placeholder="email" autocomplete="username" autofocus>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-tab="login">Logowanie</button>
+        <button class="auth-tab" data-auth-tab="register">Rejestracja</button>
+      </div>
+
+      <div class="auth-fields auth-pane" id="authPaneLogin">
+        <input type="text" id="authUsername" placeholder="nazwa użytkownika" autocomplete="username" autofocus>
         <input type="password" id="authPassword" placeholder="hasło" autocomplete="current-password">
         <button class="tool-btn primary" id="authLoginBtn">Zaloguj się</button>
       </div>
+
+      <div class="auth-fields auth-pane" id="authPaneRegister" style="display:none;">
+        <input type="text" id="regUsername" placeholder="nazwa użytkownika" autocomplete="username">
+        <input type="password" id="regPassword" placeholder="hasło (min. 6 znaków)" autocomplete="new-password">
+        <input type="password" id="regPassword2" placeholder="powtórz hasło" autocomplete="new-password">
+        <input type="text" id="regCode" placeholder="kod zaproszenia" autocomplete="off" class="mono">
+        <button class="tool-btn primary" id="authRegisterBtn">Zarejestruj się</button>
+        <p class="auth-hint">Nie masz kodu zaproszenia? Skontaktuj się z adminem serwera.</p>
+      </div>
+
       <div class="auth-error" id="authError"></div>
     </div>
   </div>
@@ -1275,7 +1736,7 @@
           <h1>Skilltree Studio</h1>
           <p>Edytor drzewek perków</p>
         </div>
-        <button class="logout-btn" id="logoutBtn" title="Wyloguj">⏻</button>
+        <button class="logout-btn" id="logoutBtn" title="Wyloguj"><span class="user-badge" id="userBadge"></span>⏻</button>
       </div>
       <div class="cat-tabs" id="catTabs"></div>
       <div class="search">
@@ -1302,6 +1763,8 @@
           <button id="duplicateBtn" class="icon-btn" title="Duplikuj">⧉</button>
           <button id="deleteBtn" class="icon-btn danger" title="Usuń (Delete)">⌫</button>
           <button id="saveBtn" class="tool-btn primary">Zapisz</button>
+          <button id="aiBtn" class="tool-btn" title="AI Asystent (sugestie, audyt, opisy)">✨ AI</button>
+          <button id="invitesBtn" class="tool-btn" title="Zarządzaj zaproszeniami i userami (admin)" style="display:none;">🔑 Zaproszenia</button>
           <button id="searchBtn" class="tool-btn" title="Szukaj perków (Ctrl+K)">🔍 Szukaj</button>
           <button id="validateBtn" class="tool-btn" title="Sprawdź problemy w drzewach">
             ✓ Walidacja
@@ -1417,6 +1880,87 @@
     </div>
   </div>
 
+  <!-- Modal: Zaproszenia (super-admin) -->
+  <div class="modal-bd" id="invitesModal">
+    <div class="modal modal-wide">
+      <h3>🔑 Zaproszenia &amp; użytkownicy</h3>
+      <div class="ai-tabs">
+        <button class="ai-tab active" data-inv-tab="codes">Kody zaproszeń</button>
+        <button class="ai-tab" data-inv-tab="users">Użytkownicy</button>
+      </div>
+
+      <div class="ai-pane" id="invPaneCodes">
+        <p class="help-tip" style="margin-bottom:10px;">
+          Stwórz kod zaproszenia i wyślij go znajomemu. Kod może mieć ograniczoną liczbę użyć.
+        </p>
+        <div class="invite-create">
+          <input id="invCodeInput" placeholder="kod (np. CREW2026)" class="mono">
+          <input id="invNoteInput" placeholder="notatka (np. dla Marka)">
+          <input type="number" id="invMaxUses" value="1" min="1" max="100" title="Liczba użyć">
+          <button class="tool-btn primary" id="invCreateBtn">+ Utwórz</button>
+        </div>
+        <div id="invCodesList" class="invites-list">
+          <p class="help-tip" style="text-align:center;">Wczytuję…</p>
+        </div>
+      </div>
+
+      <div class="ai-pane" id="invPaneUsers" style="display:none;">
+        <p class="help-tip" style="margin-bottom:10px;">
+          Lista wszystkich zarejestrowanych użytkowników. Możesz nadać/odebrać rolę super-admina.
+        </p>
+        <div id="invUsersList" class="invites-list">
+          <p class="help-tip" style="text-align:center;">Wczytuję…</p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-invites">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Asystent -->
+  <div class="modal-bd" id="aiModal">
+    <div class="modal modal-wide">
+      <h3>✨ AI Asystent</h3>
+      <p class="help-tip" style="margin-bottom: 14px;" id="aiSpecLabel">
+        Wybierz drzewko, dla którego chcesz wygenerować pomysły.
+      </p>
+      <div class="ai-tabs">
+        <button class="ai-tab active" data-ai-tab="suggest">Sugestie perków</button>
+        <button class="ai-tab" data-ai-tab="audit">Audyt balansu</button>
+      </div>
+
+      <div class="ai-pane" id="aiPaneSuggest">
+        <div class="field">
+          <label>Kierunek (opcjonalnie)</label>
+          <input id="aiSuggestPrompt" placeholder="np. perki w temacie ucieczki przed policją" autocomplete="off">
+        </div>
+        <div class="ai-controls">
+          <div class="field" style="flex: 0 0 90px;">
+            <label>Liczba</label>
+            <input type="number" id="aiSuggestCount" value="5" min="1" max="10">
+          </div>
+          <button class="tool-btn primary" id="aiGenerateBtn">✨ Generuj</button>
+          <span class="ai-cost-hint">≈ 1-3 sek, ~10 groszy</span>
+        </div>
+        <div id="aiSuggestResults"></div>
+      </div>
+
+      <div class="ai-pane" id="aiPaneAudit" style="display:none;">
+        <div class="ai-controls">
+          <button class="tool-btn primary" id="aiAuditBtn">✨ Przeanalizuj drzewko</button>
+          <span class="ai-cost-hint">≈ 2-4 sek, ~12 groszy</span>
+        </div>
+        <div id="aiAuditResults"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-ai">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: wyszukiwarka perków -->
   <div class="modal-bd" id="searchModal">
     <div class="modal modal-wide">
@@ -1431,6 +1975,9 @@
         <button class="search-filter-btn" data-search-flag="spec">Tylko spec</button>
         <button class="search-filter-btn" data-search-flag="good">Tylko Good</button>
         <button class="search-filter-btn" data-search-flag="evil">Tylko Evil</button>
+        <button class="search-filter-btn" data-search-flag="approved">Zaakceptowane</button>
+        <button class="search-filter-btn" data-search-flag="rejected">Do usunięcia</button>
+        <button class="search-filter-btn" data-search-flag="pending">Oczekujące</button>
       </div>
       <div class="search-results" id="searchResults"></div>
       <div class="modal-actions">
@@ -1585,6 +2132,9 @@ const Sync = (() => {
     let levels = r.levels;
     if (typeof levels === 'string') { try { levels = JSON.parse(levels); } catch(e){ levels = [{desc:''}]; } }
     if (!Array.isArray(levels) || levels.length === 0) levels = [{desc:''}];
+    let excl = r.excludes_perks;
+    if (typeof excl === 'string') { try { excl = JSON.parse(excl); } catch(e){ excl = []; } }
+    if (!Array.isArray(excl)) excl = [];
     return {
       id: r.id,
       label: r.label || r.id,
@@ -1597,6 +2147,9 @@ const Sync = (() => {
       isSpec: r.is_spec === true,
       specColor: r.spec_color || null,
       alignment: r.alignment || 'neutral',
+      excludesPerks: excl,
+      approvalStatus: r.approval_status || 'pending',
+      approvalSummary: r.approval_summary || null,
     };
   }
 
@@ -1615,6 +2168,8 @@ const Sync = (() => {
       is_spec: p.isSpec === true,
       spec_color: p.specColor || null,
       alignment: p.alignment || 'neutral',
+      excludes_perks: p.excludesPerks || [],
+      // approval_status/summary nie wysyłamy z save_perk – stan wyłącznie z RPC
       last_modified_by: CLIENT_ID,
     };
   }
@@ -1829,6 +2384,7 @@ const Sync = (() => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'perks' }, handleEvent)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'specializations' }, handleEvent)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, handleEvent)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'perk_votes' }, handleEvent)
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') console.log('[Sync] Realtime aktywne');
         else if (status === 'CHANNEL_ERROR') console.warn('[Sync] Realtime błąd kanału');
@@ -2254,6 +2810,45 @@ function renderCanvas(){
     });
   });
 
+  // ===== Linie wykluczania (czerwone, przerywane, w obu kierunkach) =====
+  // Renderujemy tylko z mniejszego ID na większy żeby nie dublować linii
+  const drawnExclusions = new Set();
+  Object.values(spec.perks).forEach(perk => {
+    (perk.excludesPerks || []).forEach(otherId => {
+      const other = spec.perks[otherId];
+      if (!other) return;
+      const key = perk.id < otherId ? perk.id + '|' + otherId : otherId + '|' + perk.id;
+      if (drawnExclusions.has(key)) return;
+      drawnExclusions.add(key);
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      // Lekko zakrzywiona linia żeby nie nakładała się na requiredPerks
+      const mx = (perk.x + other.x) / 2;
+      const my = (perk.y + other.y) / 2;
+      const dx = other.x - perk.x;
+      const dy = other.y - perk.y;
+      const len = Math.sqrt(dx*dx + dy*dy) || 1;
+      // Krzywa wygięta prostopadle do linii (w lewo o 25px)
+      const ox = -dy / len * 25;
+      const oy = dx / len * 25;
+      path.setAttribute('d', 'M' + perk.x + ',' + perk.y + ' Q' + (mx + ox) + ',' + (my + oy) + ' ' + other.x + ',' + other.y);
+      path.setAttribute('class', 'exclusion-line');
+      path.dataset.a = perk.id;
+      path.dataset.b = otherId;
+      path.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('Usunąć wykluczanie "' + (perk.label || perk.id) + '" ↔ "' + (other.label || other.id) + '"?')) {
+          perk.excludesPerks = (perk.excludesPerks || []).filter(x => x !== otherId);
+          other.excludesPerks = (other.excludesPerks || []).filter(x => x !== perk.id);
+          renderAll();
+          syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, perk);
+          syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, other);
+        }
+      };
+      edgesLayer.appendChild(path);
+    });
+  });
+
   Object.values(spec.perks).forEach(perk => {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     let cls = 'perk-node';
@@ -2264,6 +2859,10 @@ function renderCanvas(){
     }
     if (STATE.ui.connectFrom === perk.id) cls += ' connect-source';
     if (perk.isSpec) cls += ' is-spec';
+    if (perk.approvalStatus === 'approved') cls += ' approval-approved';
+    else if (perk.approvalStatus === 'rejected') cls += ' approval-rejected';
+    else if (perk.approvalStatus === 'needs_changes') cls += ' approval-needs-changes';
+    else if (perk.approvalStatus === 'in_review') cls += ' approval-in-review';
     g.setAttribute('class', cls);
     g.setAttribute('transform', 'translate(' + perk.x + ',' + perk.y + ')');
     g.dataset.perkId = perk.id;
@@ -2432,7 +3031,7 @@ function renderInspector(){
   html += '<h2>' + escapeHtml(perk.label || perk.id) + '</h2>';
   html += '<div class="field"><label>ID</label><input class="mono" data-bind="id" value="' + escapeHtml(perk.id) + '"></div>';
   html += '<div class="field"><label>Nazwa (label)</label><input data-bind="label" value="' + escapeHtml(perk.label || '') + '"></div>';
-  html += '<div class="field"><label>Opis</label><textarea data-bind="desc" placeholder="Krótki opis działania perka">' + escapeHtml(desc) + '</textarea></div>';
+  html += '<div class="field"><label style="display:flex; align-items:center; justify-content:space-between;">Opis <button class="ai-complete-btn" id="aiCompleteDescBtn" type="button" title="Niech AI napisze opis na podstawie nazwy">✨ Wymyśl</button></label><textarea data-bind="desc" placeholder="Krótki opis działania perka">' + escapeHtml(desc) + '</textarea></div>';
   html += '<div class="field-row">';
   html += '<div class="field"><label>Wymagany level</label><input type="number" min="1" data-bind="requiredLevel" value="' + (perk.requiredLevel || 1) + '"></div>';
   html += '<div class="field"><label>Ikona (image)</label><input class="mono" data-bind="image" value="' + escapeHtml(perk.image || '') + '"></div>';
@@ -2483,6 +3082,32 @@ function renderInspector(){
     html += '<p class="help-tip">Brak innych perków w tym drzewie.</p>';
   }
 
+  // ===== Wykluczanie =====
+  html += '<div class="section-title">Wyklucza się z</div>';
+  html += '<p class="help-tip" style="margin-bottom:6px;">Wybór tych perków zablokuje pozostałe (wzajemnie).</p>';
+  html += '<div id="exclList">';
+  (perk.excludesPerks || []).forEach(exId => {
+    const ex = spec.perks[exId];
+    const name = ex ? (ex.label || ex.id) : exId;
+    html += '<div class="req-item">' +
+      '<span class="req-name" title="' + escapeHtml(name) + '">⊘ ' + escapeHtml(name) + '</span>' +
+      '<button class="icon-x" data-excl-del="' + escapeHtml(exId) + '" title="Usuń">✕</button>' +
+    '</div>';
+  });
+  html += '</div>';
+  // Lista perków do dodania (bez tych już wykluczonych i bez samego siebie)
+  const exclSet = new Set(perk.excludesPerks || []);
+  const exclOptions = otherPerks
+    .filter(p => !exclSet.has(p.id))
+    .map(p => '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.label || p.id) + '</option>')
+    .join('');
+  if (otherPerks.filter(p => !exclSet.has(p.id)).length > 0) {
+    html += '<div class="req-add-row">' +
+      '<select id="exclAddSel" style="flex:1;"><option value="">+ Dodaj wykluczenie…</option>' + exclOptions + '</select>' +
+      '<button class="icon-btn-sm" id="exclAddBtn" title="Dodaj">+</button>' +
+    '</div>';
+  }
+
   html += '<div class="section-title">Wartości / efekty</div>';
   html += '<div id="effectList">';
   if (effects.length === 0) {
@@ -2501,6 +3126,33 @@ function renderInspector(){
     '<input id="effAddVal" placeholder="0.05" class="mono" style="flex:1;">' +
     '<button class="icon-btn-sm" id="effAddBtn" title="Dodaj">+</button>' +
   '</div>';
+
+  // ===== System akceptacji =====
+  const status = perk.approvalStatus || 'pending';
+  const summary = perk.approvalSummary || '';
+  const statusLabels = {
+    'pending':       { label: 'Oczekuje na recenzję', cls: 'st-pending' },
+    'in_review':     { label: 'W trakcie recenzji',   cls: 'st-in-review' },
+    'approved':      { label: 'Zaakceptowany',        cls: 'st-approved' },
+    'rejected':      { label: 'Do usunięcia',         cls: 'st-rejected' },
+    'needs_changes': { label: 'Wymaga poprawek',      cls: 'st-needs-changes' },
+  };
+  const sLabel = statusLabels[status] || statusLabels.pending;
+  html += '<div class="section-title">Akceptacja</div>';
+  html += '<div class="approval-status ' + sLabel.cls + '">' +
+    '<span class="approval-dot"></span>' +
+    '<span>' + escapeHtml(sLabel.label) + '</span>' +
+    (summary ? '<span class="approval-tally">' + escapeHtml(summary) + '</span>' : '') +
+  '</div>';
+  html += '<div class="vote-buttons">' +
+    '<button class="vote-btn vote-approve" data-vote="approve">✓ Akceptuj</button>' +
+    '<button class="vote-btn vote-needs-changes" data-vote="needs_changes">⚠ Poprawki</button>' +
+    '<button class="vote-btn vote-reject" data-vote="reject">✗ Odrzuć</button>' +
+  '</div>';
+  html += '<div class="vote-comment-row">' +
+    '<input id="voteComment" placeholder="Komentarz (opcjonalnie)" autocomplete="off">' +
+  '</div>';
+  html += '<div id="votesList" class="votes-list"><p class="help-tip" style="font-size:11px;">Wczytuję głosy...</p></div>';
 
   html += '<div class="danger-zone"><button class="delete-btn" id="deletePerkBtn">Usuń perk</button></div>';
   html += '</div>';
@@ -2635,6 +3287,36 @@ function renderInspector(){
     };
   }
 
+  // ===== AI: wymyśl opis =====
+  const aiCompleteBtn = inspector.querySelector('#aiCompleteDescBtn');
+  if (aiCompleteBtn) {
+    aiCompleteBtn.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const label = (perk.label || '').trim();
+      if (!label) { showToast('Najpierw wpisz nazwę perka', 'error'); return; }
+      aiCompleteBtn.disabled = true;
+      aiCompleteBtn.textContent = '✨ ...';
+      try {
+        const res = await AIAssist.completeDesc(label, perk.alignment, perk.requiredLevel);
+        if (res && res.desc) {
+          if (!perk.levels || perk.levels.length === 0) perk.levels = [{ desc: '' }];
+          perk.levels[0].desc = res.desc;
+          // Aktualizuj textarea
+          const ta = inspector.querySelector('textarea[data-bind="desc"]');
+          if (ta) ta.value = res.desc;
+          syncCurrentPerk();
+          showToast('Wygenerowano opis');
+        }
+      } catch (e) {
+        showToast('AI: ' + e.message, 'error');
+      } finally {
+        aiCompleteBtn.disabled = false;
+        aiCompleteBtn.textContent = '✨ Wymyśl';
+      }
+    });
+  }
+
   // ===== Spec perk toggle handler =====
   const specToggle = inspector.querySelector('#specToggle');
   if (specToggle) {
@@ -2687,6 +3369,69 @@ function renderInspector(){
       syncCurrentPerk();
     };
   });
+
+  // ===== Wykluczanie: handler usuwania =====
+  inspector.querySelectorAll('[data-excl-del]').forEach(b => {
+    b.onclick = () => {
+      const otherId = b.dataset.exclDel;
+      const otherPerk = spec.perks[otherId];
+      perk.excludesPerks = (perk.excludesPerks || []).filter(x => x !== otherId);
+      if (otherPerk) {
+        otherPerk.excludesPerks = (otherPerk.excludesPerks || []).filter(x => x !== perk.id);
+        syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, otherPerk);
+      }
+      renderAll();
+      syncCurrentPerk();
+    };
+  });
+
+  // ===== Wykluczanie: handler dodawania =====
+  const exclAddBtn = inspector.querySelector('#exclAddBtn');
+  if (exclAddBtn) {
+    exclAddBtn.onclick = () => {
+      const sel = inspector.querySelector('#exclAddSel');
+      const otherId = sel.value;
+      if (!otherId) return;
+      const otherPerk = spec.perks[otherId];
+      if (!otherPerk) return;
+      // Symetryczne: dodaj w obu kierunkach
+      perk.excludesPerks = perk.excludesPerks || [];
+      otherPerk.excludesPerks = otherPerk.excludesPerks || [];
+      if (!perk.excludesPerks.includes(otherId)) perk.excludesPerks.push(otherId);
+      if (!otherPerk.excludesPerks.includes(perk.id)) otherPerk.excludesPerks.push(perk.id);
+      syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, otherPerk);
+      syncCurrentPerk();
+      renderAll();
+    };
+  }
+
+  // ===== Voting =====
+  inspector.querySelectorAll('[data-vote]').forEach(btn => {
+    btn.onclick = async () => {
+      const vote = btn.dataset.vote;
+      const commentEl = inspector.querySelector('#voteComment');
+      const comment = commentEl ? commentEl.value.trim() : '';
+      btn.disabled = true;
+      const orig = btn.textContent;
+      btn.textContent = '…';
+      try {
+        await Voting.cast(perk.id, STATE.ui.activeSpecId, STATE.ui.activeCategory, vote, comment);
+        if (commentEl) commentEl.value = '';
+        await Voting.refreshFor(perk);
+        // Odśwież inspector – status się zmienił
+        renderInspector();
+        renderCanvas();
+      } catch (e) {
+        showToast('Błąd głosowania: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = orig;
+      }
+    };
+  });
+  // Pobierz listę głosów dla tego perka
+  Voting.refreshFor(perk).then(() => {
+    Voting.renderList(perk, inspector.querySelector('#votesList'));
+  }).catch(() => {});
 
   inspector.querySelector('#deletePerkBtn').onclick = () => {
     if (confirm('Usunąć perk "' + (perk.label || perk.id) + '"?')) deletePerk(perk.id);
@@ -3047,7 +3792,7 @@ function onCanvasMouseDown(e){
 function onWheel(e){
   e.preventDefault();
   const delta = -Math.sign(e.deltaY) * 0.1;
-  const newZoom = Math.max(0.3, Math.min(2.5, STATE.ui.zoom + delta));
+  const newZoom = Math.max(0.1, Math.min(2.5, STATE.ui.zoom + delta));
   const rect = $('#treeCanvas').getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
@@ -3327,6 +4072,9 @@ function dataToLuaWithLocale(data, options){
 
       const perks = spec.perks || {};
       for (const [pid, perk] of Object.entries(perks)) {
+        // POMIJAJ perki odrzucone do usunięcia – nie trafiają do produkcyjnego pliku
+        if (perk.approvalStatus === 'rejected') continue;
+
         const perkLabelKey = specPrefix + 'PERK_' + pid.toUpperCase().replace(/[^A-Z0-9]+/g, '_') + '_LABEL';
         const perkLabelExpr = registerText(perk.label || pid, perkLabelKey);
 
@@ -3347,9 +4095,25 @@ function dataToLuaWithLocale(data, options){
           lines.push(indentStr(5) + 'alignment = "' + perk.alignment + '",');
         }
 
-        // requiredPerks – tylko jeżeli niepuste
+        // excludesPerks – wzajemnie wykluczające się perki (filter na rejected też)
+        const excludes = (perk.excludesPerks || []).filter(exId => {
+          const ex = perks[exId];
+          return ex && ex.approvalStatus !== 'rejected';
+        });
+        if (excludes.length > 0) {
+          lines.push(indentStr(5) + 'excludesPerks = {');
+          excludes.forEach(exId => {
+            lines.push(indentStr(6) + '"' + escapeLuaString(exId) + '",');
+          });
+          lines.push(indentStr(5) + '},');
+        }
+
+        // requiredPerks – tylko jeżeli niepuste, pomijaj te wskazujące na rejected
         const reqPerks = perk.requiredPerks || {};
-        const reqEntries = Object.entries(reqPerks);
+        const reqEntries = Object.entries(reqPerks).filter(([reqId]) => {
+          const r = perks[reqId];
+          return r && r.approvalStatus !== 'rejected';
+        });
         if (reqEntries.length > 0) {
           lines.push(indentStr(5) + 'requiredPerks = {');
           reqEntries.forEach(([reqId, reqLvl]) => {
@@ -3573,6 +4337,43 @@ const Snapshots = (() => {
 // pierwszy w panelu i steruje "nieprzeczytaną" kropką.
 const APP_UPDATES = [
   {
+    version: '1.9.0',
+    date: '05.05.2026',
+    items: [
+      'Dodano otwartą rejestrację z kodem zaproszenia – nowi użytkownicy logują się przez nazwę użytkownika + hasło, kod zaproszenia chroni przed spamerami #Auth',
+      'Dodano role: super-admin (główny admin) i edytor (zarejestrowany przez kod) #Auth',
+      'Edytorzy mają wszystkie uprawnienia poza Historią i przywracaniem wersji',
+      'Dodano panel 🔑 Zaproszenia – zarządzanie kodami i nadawanie ról (tylko dla super-admina) #UI',
+      'Głosy w systemie akceptacji są teraz podpisane nazwą użytkownika (zamiast e-mail/ID)',
+      'Wymagana migracja SQL: <code>migration-auth-roles.sql</code> + ustawienie super-admina na Twoim koncie #SQL',
+    ],
+  },
+  {
+    version: '1.8.0',
+    date: '01.05.2026',
+    items: [
+      'Dodano wzajemne wykluczanie perków – sekcja "Wyklucza się z" w edytorze, czerwone przerywane linie na canvasie #UI',
+      'Dodano system akceptacji perków z głosowaniem – 5 stanów: oczekuje / w recenzji / zaakceptowany / wymaga poprawek / odrzucony #Workflow',
+      'Każdy admin może zostawić komentarz przy głosie, status agreguje się automatycznie po stronie bazy #Workflow',
+      'Zaakceptowane perki świecą na zielono, odrzucone na czerwono, wymagające poprawek na żółto #UI',
+      'Eksport Lua pomija perki ze statusem "rejected" – nie trafiają do produkcyjnego pliku #Lua',
+      'Dodano nowe filtry w wyszukiwarce: Zaakceptowane / Do usunięcia / Oczekujące',
+      'Zoom-out rozszerzony do 10% (było 30%) – widać duże drzewa w całości',
+      'Wymagana migracja SQL: <code>migration-excludes-approval.sql</code> #SQL',
+    ],
+  },
+  {
+    version: '1.7.0',
+    date: '01.05.2026',
+    items: [
+      'Dodano AI Asystenta (Claude Sonnet 4.6) – generuje sugestie nowych perków, audyt balansu, opisy #AI',
+      'Dodano przycisk ✨ Wymyśl przy polu Opis – AI pisze opis na podstawie nazwy perka',
+      'Klucz API trzymany bezpiecznie po stronie serwera (Supabase Edge Function), nigdy w przeglądarce',
+      'Wymagany deploy Edge Function: <code>ai-assist</code> + ustawienie sekretu <code>ANTHROPIC_API_KEY</code> #SQL',
+      'Koszt: ~10 groszy za sugestie, ~12 groszy za audyt, ~3 grosze za opis',
+    ],
+  },
+  {
     version: '1.6.0',
     date: '01.05.2026',
     items: [
@@ -3750,6 +4551,7 @@ const PerkSearch = (() => {
             isSpec: !!perk.isSpec,
             specColor: perk.specColor || null,
             alignment: perk.alignment || 'neutral',
+            approvalStatus: perk.approvalStatus || 'pending',
             specLabel: spec.label || specId,
             catName: (CATEGORIES.find(c => c.id === catId) || {}).name || catId,
             catAccent: (CATEGORIES.find(c => c.id === catId) || {}).accent || '#888',
@@ -3768,6 +4570,9 @@ const PerkSearch = (() => {
       if (state.flagFilter === 'spec' && !it.isSpec) return false;
       if (state.flagFilter === 'good' && it.alignment !== 'good') return false;
       if (state.flagFilter === 'evil' && it.alignment !== 'evil') return false;
+      if (state.flagFilter === 'approved' && it.approvalStatus !== 'approved') return false;
+      if (state.flagFilter === 'rejected' && it.approvalStatus !== 'rejected') return false;
+      if (state.flagFilter === 'pending' && it.approvalStatus !== 'pending') return false;
       if (q && !it.haystack.includes(q)) return false;
       return true;
     });
@@ -4185,6 +4990,412 @@ const SnapshotDiff = (() => {
   return { open, close };
 })();
 
+// ============= VOTING / SYSTEM AKCEPTACJI =============
+
+const Voting = (() => {
+  // Cache: { "catId|specId|perkId": [{voter, vote, comment, created_at}, ...] }
+  const cache = {};
+
+  function cacheKey(catId, specId, perkId){
+    return catId + '|' + specId + '|' + perkId;
+  }
+
+  async function refreshFor(perk){
+    const sb = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (!sb) return [];
+    const catId = STATE.ui.activeCategory;
+    const specId = STATE.ui.activeSpecId;
+    const { data, error } = await sb.rpc('get_perk_votes', {
+      p_perk_id: perk.id, p_spec_id: specId, p_cat_id: catId,
+    });
+    if (error) {
+      console.error('get_perk_votes:', error.message);
+      return [];
+    }
+    cache[cacheKey(catId, specId, perk.id)] = data || [];
+    return data || [];
+  }
+
+  async function cast(perkId, specId, catId, vote, comment){
+    const sb = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (!sb) throw new Error('Brak klienta Supabase');
+    const voter = await currentUserId();
+    const { error } = await sb.rpc('cast_perk_vote', {
+      p_perk_id: perkId, p_spec_id: specId, p_cat_id: catId,
+      p_voter: voter, p_vote: vote, p_comment: (comment || null),
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  async function remove(perkId, specId, catId){
+    const sb = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (!sb) throw new Error('Brak klienta Supabase');
+    const voter = await currentUserId();
+    const { error } = await sb.rpc('remove_perk_vote', {
+      p_perk_id: perkId, p_spec_id: specId, p_cat_id: catId, p_voter: voter,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  // Identyfikator głosującego: username z user_profiles (jeżeli zalogowany), fallback CLIENT_ID
+  let _userIdCache = null;
+  async function currentUserId(){
+    if (_userIdCache) return _userIdCache;
+    // Najpierw spróbuj pobrać username z Roles
+    if (typeof Roles !== 'undefined') {
+      const u = Roles.getUsername();
+      if (u) { _userIdCache = u; return _userIdCache; }
+    }
+    // Fallback: zapytaj my_profile
+    const sb = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (sb) {
+      try {
+        const { data } = await sb.rpc('my_profile');
+        if (data && data[0] && data[0].username) {
+          _userIdCache = data[0].username;
+          return _userIdCache;
+        }
+      } catch(e){}
+    }
+    _userIdCache = (typeof CLIENT_ID !== 'undefined') ? CLIENT_ID : 'anon';
+    return _userIdCache;
+  }
+
+  function shortVoter(voter){
+    if (!voter) return '?';
+    // Email: "admin@example.com" → "admin"
+    if (voter.includes('@')) return voter.split('@')[0];
+    // ID: pokaż ostatnie 6 znaków
+    if (voter.length > 8) return '…' + voter.slice(-6);
+    return voter;
+  }
+
+  function formatVoteTime(iso){
+    const d = new Date(iso);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    const pad = (n) => String(n).padStart(2, '0');
+    if (sameDay) return pad(d.getHours()) + ':' + pad(d.getMinutes());
+    return pad(d.getDate()) + '.' + pad(d.getMonth()+1);
+  }
+
+  function renderList(perk, wrap){
+    if (!wrap) return;
+    const catId = STATE.ui.activeCategory;
+    const specId = STATE.ui.activeSpecId;
+    const list = cache[cacheKey(catId, specId, perk.id)] || [];
+    if (list.length === 0) {
+      wrap.innerHTML = '<p class="help-tip" style="font-size:11px;">Brak głosów. Bądź pierwszy!</p>';
+      return;
+    }
+    wrap.innerHTML = list.map(v => {
+      const cls = 'vote-' + v.vote;
+      const sym = v.vote === 'approve' ? '✓' : (v.vote === 'reject' ? '✗' : '⚠');
+      return '<div class="vote-row ' + cls + '">' +
+          '<span class="vote-sym">' + sym + '</span>' +
+          '<span class="vote-author">' + escapeHtml(shortVoter(v.voter)) + '</span>' +
+          '<span class="vote-time">' + escapeHtml(formatVoteTime(v.created_at)) + '</span>' +
+          (v.comment ? '<div class="vote-comment-text">' + escapeHtml(v.comment) + '</div>' : '') +
+          '<button class="vote-row-del" data-vote-del="' + escapeHtml(v.voter) + '" title="Usuń głos">✕</button>' +
+        '</div>';
+    }).join('');
+
+    // Usuń własny głos
+    wrap.querySelectorAll('[data-vote-del]').forEach(btn => {
+      btn.onclick = async () => {
+        const voter = btn.dataset.voteDel;
+        const me = await currentUserId();
+        if (voter !== me) {
+          showToast('Możesz usunąć tylko swój głos', 'error');
+          return;
+        }
+        try {
+          await remove(perk.id, specId, catId);
+          await refreshFor(perk);
+          renderInspector();
+          renderCanvas();
+        } catch(e) {
+          showToast('Błąd: ' + e.message, 'error');
+        }
+      };
+    });
+  }
+
+  return { refreshFor, cast, remove, renderList, currentUserId };
+})();
+
+// ============= AI ASYSTENT =============
+// Wywołuje Supabase Edge Function `ai-assist`. Klucz Anthropic siedzi
+// po stronie serwera (Supabase Secrets), nigdy nie dotyka przeglądarki.
+
+const AIAssist = (() => {
+  let lastSuggestions = [];
+  let isLoading = false;
+
+  function buildSpecContext(){
+    const cat = getActiveCategory();
+    const spec = getActiveSpec();
+    if (!spec) return null;
+    const perks = Object.values(spec.perks || {}).map(p => ({
+      id: p.id,
+      label: p.label || p.id,
+      desc: (p.levels && p.levels[0] && p.levels[0].desc) || '',
+      requiredLevel: p.requiredLevel || 1,
+      alignment: p.alignment || 'neutral',
+      isSpec: !!p.isSpec,
+      requiredPerks: p.requiredPerks || {},
+    }));
+    return {
+      catId: STATE.ui.activeCategory,
+      catName: cat ? cat.name : STATE.ui.activeCategory,
+      specId: STATE.ui.activeSpecId,
+      specLabel: spec.label || spec.id,
+      specDesc: spec.desc || '',
+      perks: perks,
+    };
+  }
+
+  async function call(action, extraPayload){
+    const sb = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (!sb) throw new Error('Brak klienta Supabase');
+    const spec = buildSpecContext();
+    if (!spec) throw new Error('Najpierw wybierz drzewko');
+
+    const { data, error } = await sb.functions.invoke('ai-assist', {
+      body: { action, spec, ...extraPayload },
+    });
+    if (error) {
+      // Edge Function zwraca strukturyzowany błąd w body; supabase-js łapie też http-level
+      const detail = (error.context && error.context.error) || error.message || 'Nieznany błąd';
+      throw new Error(detail);
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // ---------- Sugestie ----------
+
+  async function generateSuggestions(){
+    if (isLoading) return;
+    const prompt = ($('#aiSuggestPrompt').value || '').trim();
+    const count = parseInt($('#aiSuggestCount').value) || 5;
+    const wrap = $('#aiSuggestResults');
+    wrap.innerHTML = '<div class="ai-loading">Generuję ' + count + ' sugestii...</div>';
+    isLoading = true;
+    $('#aiGenerateBtn').disabled = true;
+    try {
+      const result = await call('suggest_perks', { prompt, count });
+      lastSuggestions = result.suggestions || [];
+      renderSuggestions();
+    } catch (e) {
+      wrap.innerHTML = '<div class="ai-error">Błąd: ' + escapeHtml(e.message) + '</div>';
+    } finally {
+      isLoading = false;
+      $('#aiGenerateBtn').disabled = false;
+    }
+  }
+
+  function renderSuggestions(){
+    const wrap = $('#aiSuggestResults');
+    if (!lastSuggestions || lastSuggestions.length === 0) {
+      wrap.innerHTML = '<p class="help-tip" style="text-align:center; padding:16px;">Brak sugestii.</p>';
+      return;
+    }
+
+    const cat = getActiveCategory();
+    const accent = cat ? cat.accent : 'var(--acc-points)';
+
+    wrap.innerHTML = lastSuggestions.map((s, idx) => {
+      const tags = [];
+      if (s.isSpec) tags.push('<span class="ai-sug-tag spec">Spec</span>');
+      if (s.alignment === 'good') tags.push('<span class="ai-sug-tag good">Good</span>');
+      if (s.alignment === 'evil') tags.push('<span class="ai-sug-tag evil">Evil</span>');
+      const reqList = Object.keys(s.requiredPerks || {});
+      const reqHtml = reqList.length > 0
+        ? 'wymaga: ' + reqList.map(r => '<span style="color:var(--text-2);">' + escapeHtml(r) + '</span>').join(', ')
+        : 'bez wymagań';
+
+      return '<div class="ai-suggestion" data-idx="' + idx + '" style="--cat-color:' + escapeHtml(accent) + ';">' +
+          '<div class="ai-sug-head">' +
+            '<span class="ai-sug-label">' + escapeHtml(s.label) + '</span>' +
+            '<span class="ai-sug-id">' + escapeHtml(s.id) + '</span>' +
+            '<span class="ai-sug-tags">' + tags.join('') + '</span>' +
+          '</div>' +
+          '<div class="ai-sug-desc">' + escapeHtml(s.desc) + '</div>' +
+          '<div class="ai-sug-meta">level ' + (s.requiredLevel || 1) + ' · ' + reqHtml + '</div>' +
+          (s.rationale ? '<div class="ai-sug-rationale">' + escapeHtml(s.rationale) + '</div>' : '') +
+          '<div class="ai-sug-actions">' +
+            '<button class="tool-btn primary" data-add-sug="' + idx + '">+ Dodaj do drzewka</button>' +
+            '<button class="tool-btn" data-skip-sug="' + idx + '">Pomiń</button>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+
+    wrap.querySelectorAll('[data-add-sug]').forEach(btn => {
+      btn.onclick = () => addSuggestionToTree(parseInt(btn.dataset.addSug));
+    });
+    wrap.querySelectorAll('[data-skip-sug]').forEach(btn => {
+      btn.onclick = () => {
+        const card = btn.closest('.ai-suggestion');
+        if (card) card.remove();
+      };
+    });
+  }
+
+  function addSuggestionToTree(idx){
+    const s = lastSuggestions[idx];
+    if (!s) return;
+    const spec = getActiveSpec();
+    if (!spec) { showToast('Brak aktywnego drzewka', 'error'); return; }
+    const catId = STATE.ui.activeCategory;
+    const specId = STATE.ui.activeSpecId;
+
+    // Wygeneruj unikalne ID (kolizja → dodaj sufiks)
+    let finalId = (s.id || 'perk_new').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    let suffix = 2;
+    while (spec.perks[finalId]) {
+      finalId = (s.id || 'perk_new').toLowerCase().replace(/[^a-z0-9_]/g, '_') + '_' + suffix;
+      suffix++;
+    }
+
+    // Walidacja requiredPerks – zostaw tylko te które naprawdę istnieją
+    const reqClean = {};
+    for (const [reqId, lvl] of Object.entries(s.requiredPerks || {})) {
+      if (spec.perks[reqId]) reqClean[reqId] = lvl || 1;
+    }
+
+    // Pozycja: jeśli ma wymagania, postaw obok pierwszego z nich; inaczej w środku
+    let x = 400, y = 300;
+    const reqIds = Object.keys(reqClean);
+    if (reqIds.length > 0) {
+      const ref = spec.perks[reqIds[0]];
+      x = ref.x + 160;
+      y = ref.y + 80 + Math.floor(Math.random() * 40 - 20);
+    } else {
+      // Znajdź wolne miejsce
+      const taken = Object.values(spec.perks).map(p => ({ x: p.x, y: p.y }));
+      x = 250 + (taken.length % 5) * 160;
+      y = 220 + Math.floor(taken.length / 5) * 140;
+    }
+
+    const newPerk = {
+      id: finalId,
+      label: s.label || finalId,
+      image: finalId,
+      requiredLevel: s.requiredLevel || 1,
+      requiredPerks: reqClean,
+      levels: [{ desc: s.desc || '' }],
+      x: x, y: y,
+      isSpec: !!s.isSpec,
+      specColor: null,
+      alignment: s.alignment || 'neutral',
+    };
+
+    spec.perks[finalId] = newPerk;
+    syncPerk(catId, specId, newPerk);
+    showToast('Dodano "' + (s.label || finalId) + '"');
+
+    // Oznacz kartę jako added
+    const card = $('#aiSuggestResults').querySelector('[data-idx="' + idx + '"]');
+    if (card) {
+      card.classList.add('added');
+      const actions = card.querySelector('.ai-sug-actions');
+      if (actions) actions.innerHTML = '<span style="color:#a3d4ad; font-size:12px;">✓ Dodano</span>';
+    }
+
+    renderAll();
+  }
+
+  // ---------- Audyt ----------
+
+  async function runAudit(){
+    if (isLoading) return;
+    const wrap = $('#aiAuditResults');
+    wrap.innerHTML = '<div class="ai-loading">Analizuję drzewko...</div>';
+    isLoading = true;
+    $('#aiAuditBtn').disabled = true;
+    try {
+      const result = await call('audit_balance', {});
+      renderAuditResult(result);
+    } catch (e) {
+      wrap.innerHTML = '<div class="ai-error">Błąd: ' + escapeHtml(e.message) + '</div>';
+    } finally {
+      isLoading = false;
+      $('#aiAuditBtn').disabled = false;
+    }
+  }
+
+  function renderAuditResult(result){
+    const wrap = $('#aiAuditResults');
+    let html = '';
+    if (result.summary) {
+      html += '<div class="ai-audit-summary">' + escapeHtml(result.summary) + '</div>';
+    }
+    if (result.issues && result.issues.length > 0) {
+      html += result.issues.map(it => {
+        const perksHtml = (it.perkIds && it.perkIds.length > 0)
+          ? '<div class="ai-audit-issue-perks">Dotyczy: ' +
+              it.perkIds.map(pid => '<span data-jump-perk="' + escapeHtml(pid) + '">' + escapeHtml(pid) + '</span>').join('') +
+            '</div>'
+          : '';
+        return '<div class="ai-audit-issue severity-' + escapeHtml(it.severity || 'info') + '">' +
+          '<div class="ai-audit-issue-msg">' + escapeHtml(it.message) + '</div>' +
+          '<div class="ai-audit-issue-suggestion">→ ' + escapeHtml(it.suggestion) + '</div>' +
+          perksHtml +
+        '</div>';
+      }).join('');
+    } else {
+      html += '<p class="help-tip" style="text-align:center; padding:16px;">Brak issue\'ów. AI uważa, że jest ok!</p>';
+    }
+    wrap.innerHTML = html;
+
+    // Klik w perk-id → przeskocz do perka
+    wrap.querySelectorAll('[data-jump-perk]').forEach(el => {
+      el.onclick = () => {
+        const pid = el.dataset.jumpPerk;
+        const spec = getActiveSpec();
+        if (spec && spec.perks[pid]) {
+          PerkSearch.jumpToPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, pid);
+        }
+      };
+    });
+  }
+
+  // ---------- Auto-uzupełnianie opisu ----------
+
+  async function completeDesc(perkLabel, perkAlignment, perkLevel){
+    return await call('complete_desc', { perkLabel, perkAlignment, perkLevel });
+  }
+
+  // ---------- Sterowanie modalem ----------
+
+  function open(){
+    const spec = getActiveSpec();
+    const cat = getActiveCategory();
+    const lbl = $('#aiSpecLabel');
+    if (!spec) {
+      lbl.innerHTML = '<span style="color:var(--acc-danger);">Najpierw wybierz drzewko po lewej stronie.</span>';
+    } else {
+      lbl.textContent = 'Drzewko: ' + (cat ? cat.name : '?') + ' › ' + (spec.label || spec.id) +
+        ' · perków: ' + Object.keys(spec.perks || {}).length;
+    }
+    $('#aiSuggestResults').innerHTML = '';
+    $('#aiAuditResults').innerHTML = '';
+    lastSuggestions = [];
+    $('#aiModal').classList.add('show');
+  }
+
+  function close(){ $('#aiModal').classList.remove('show'); }
+
+  function setTab(name){
+    $$('.ai-tab').forEach(t => t.classList.toggle('active', t.dataset.aiTab === name));
+    $('#aiPaneSuggest').style.display = (name === 'suggest') ? '' : 'none';
+    $('#aiPaneAudit').style.display = (name === 'audit') ? '' : 'none';
+  }
+
+  return { open, close, setTab, generateSuggestions, runAudit, completeDesc };
+})();
+
 // ============= Helper: zamknij wszystkie modale =============
 function closeAllModals(){
   document.querySelectorAll('.modal-bd.show').forEach(m => m.classList.remove('show'));
@@ -4463,6 +5674,8 @@ function init(){
   $('#snapshotBtn').onclick = takeManualSnapshot;
   $('#changelogBtn').onclick = openChangelogModal;
   $('#updatesBtn').onclick = openUpdatesModal;
+  $('#aiBtn').onclick = () => AIAssist.open();
+  $('#invitesBtn').onclick = () => Invites.open();
   $('#searchBtn').onclick = () => PerkSearch.open();
   $('#validateBtn').onclick = () => Validate.open();
   $('#auditBtn').onclick = () => AuditLog.open();
@@ -4489,6 +5702,8 @@ function init(){
     if (a === 'apply-io') applyImport();
     if (a === 'close-changelog') closeChangelogModal();
     if (a === 'close-updates') closeUpdatesModal();
+    if (a === 'close-ai') AIAssist.close();
+    if (a === 'close-invites') Invites.close();
     if (a === 'close-search') PerkSearch.close();
     if (a === 'close-validate') Validate.close();
     if (a === 'close-audit') AuditLog.close();
@@ -4502,6 +5717,24 @@ function init(){
   $('#validateModal').onclick = (e) => { if (e.target.id === 'validateModal') Validate.close(); };
   $('#auditModal').onclick = (e) => { if (e.target.id === 'auditModal') AuditLog.close(); };
   $('#diffModal').onclick = (e) => { if (e.target.id === 'diffModal') SnapshotDiff.close(); };
+
+  // AI input + tabs
+  $('#aiModal').onclick = (e) => { if (e.target.id === 'aiModal') AIAssist.close(); };
+  $$('.ai-tab').forEach(b => { b.onclick = () => AIAssist.setTab(b.dataset.aiTab); });
+  $('#aiGenerateBtn').onclick = () => AIAssist.generateSuggestions();
+  $('#aiAuditBtn').onclick = () => AIAssist.runAudit();
+  $('#aiSuggestPrompt').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); AIAssist.generateSuggestions(); }
+  });
+
+  // Invites modal
+  $('#invitesModal').onclick = (e) => { if (e.target.id === 'invitesModal') Invites.close(); };
+  $$('[data-inv-tab]').forEach(b => { b.onclick = () => Invites.setTab(b.dataset.invTab); });
+  $('#invCreateBtn').onclick = () => Invites.handleCreate();
+  ['invCodeInput','invNoteInput','invMaxUses'].forEach(id => {
+    const el = $('#' + id);
+    if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') Invites.handleCreate(); });
+  });
 
   // Search input + filtry
   $('#searchInput').addEventListener('input', (e) => PerkSearch.setQuery(e.target.value));
@@ -4537,7 +5770,7 @@ function init(){
     } else if (e.key === 'Escape') {
       if (STATE.ui.connectMode) toggleConnectMode();
       else if (STATE.ui.selectedPerkIds.size > 0) { clearSelection(); renderAll(); }
-      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); PerkSearch.close(); Validate.close(); AuditLog.close(); SnapshotDiff.close(); }
+      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); AIAssist.close(); Invites.close(); PerkSearch.close(); Validate.close(); AuditLog.close(); SnapshotDiff.close(); }
     } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicatePerk();
@@ -4567,11 +5800,21 @@ function init(){
   window.addEventListener('beforeunload', () => Sync.flushOnUnload());
   window.addEventListener('pagehide', () => Sync.flushOnUnload());
 
-  // ===== Auth: handlery ekranu logowania + przycisku wyloguj =====
-  const emailInput = $('#authEmail');
+  // ===== Auth: handlery ekranu logowania + rejestracji =====
+  const usernameInput = $('#authUsername');
   const passwordInput = $('#authPassword');
   const loginBtn = $('#authLoginBtn');
   const errorBox = $('#authError');
+
+  // Konwencja: nazwa użytkownika → fake email "username@skilltree.local"
+  // Pozwala używać Supabase Auth (który wymaga email) ale UI pokazuje tylko nazwę.
+  const FAKE_EMAIL_DOMAIN = '@skilltree.local';
+  function usernameToEmail(u){
+    return u.toLowerCase().trim() + FAKE_EMAIL_DOMAIN;
+  }
+  function isValidUsername(u){
+    return /^[a-zA-Z0-9_-]{3,32}$/.test(u);
+  }
 
   function showAuthError(msg){
     errorBox.textContent = msg;
@@ -4581,28 +5824,44 @@ function init(){
     errorBox.classList.remove('show');
   }
 
+  // Przełączanie zakładek logowanie/rejestracja
+  $$('.auth-tab').forEach(tab => {
+    tab.onclick = () => {
+      const target = tab.dataset.authTab;
+      $$('.auth-tab').forEach(t => t.classList.toggle('active', t === tab));
+      $('#authPaneLogin').style.display    = (target === 'login')    ? '' : 'none';
+      $('#authPaneRegister').style.display = (target === 'register') ? '' : 'none';
+      clearAuthError();
+      if (target === 'login') usernameInput.focus();
+      else $('#regUsername').focus();
+    };
+  });
+
   async function doLogin(){
     clearAuthError();
-    const email = emailInput.value.trim();
+    const username = usernameInput.value.trim();
     const password = passwordInput.value;
-    if (!email || !password) { showAuthError('Podaj email i hasło.'); return; }
+    if (!username || !password) { showAuthError('Podaj nazwę użytkownika i hasło.'); return; }
+    if (!isValidUsername(username)) { showAuthError('Nieprawidłowa nazwa użytkownika.'); return; }
     loginBtn.disabled = true;
     loginBtn.textContent = 'Logowanie…';
     try {
       const sb = Sync.getClient();
-      const { error } = await sb.auth.signInWithPassword({ email, password });
+      const { error } = await sb.auth.signInWithPassword({
+        email: usernameToEmail(username),
+        password,
+      });
       if (error) {
-        // Częste komunikaty: "Invalid login credentials"
         if (/invalid login/i.test(error.message)) {
-          showAuthError('Nieprawidłowy email lub hasło.');
+          showAuthError('Nieprawidłowa nazwa użytkownika lub hasło.');
         } else if (/email not confirmed/i.test(error.message)) {
-          showAuthError('Konto nie jest potwierdzone. Sprawdź skrzynkę albo wyłącz wymóg potwierdzenia w Supabase.');
+          showAuthError('Konto nie jest potwierdzone. Skontaktuj się z adminem.');
         } else {
           showAuthError(error.message);
         }
         return;
       }
-      // Sukces – pokaż edytor
+      // Sukces
       hideAuthScreen();
       bootApp();
     } catch (e) {
@@ -4613,10 +5872,122 @@ function init(){
     }
   }
 
+  async function doRegister(){
+    clearAuthError();
+    const username = $('#regUsername').value.trim();
+    const password = $('#regPassword').value;
+    const password2 = $('#regPassword2').value;
+    const code = $('#regCode').value.trim();
+    const registerBtn = $('#authRegisterBtn');
+
+    // Walidacja po stronie klienta
+    if (!username || !password || !password2 || !code) {
+      showAuthError('Wypełnij wszystkie pola.'); return;
+    }
+    if (!isValidUsername(username)) {
+      showAuthError('Nazwa: 3-32 znaki, tylko a-z, 0-9, _, -.'); return;
+    }
+    if (password.length < 6) {
+      showAuthError('Hasło musi mieć min. 6 znaków.'); return;
+    }
+    if (password !== password2) {
+      showAuthError('Hasła nie są identyczne.'); return;
+    }
+
+    registerBtn.disabled = true;
+    registerBtn.textContent = 'Rejestracja…';
+    try {
+      const sb = Sync.getClient();
+
+      // 1. Sprawdź kod ZANIM utworzymy konto (żeby nie zostawać "wiszących" auth users)
+      const { data: validData, error: validErr } = await sb.rpc('validate_invitation_code', { p_code: code });
+      if (validErr) throw new Error('Walidacja kodu: ' + validErr.message);
+      if (!validData || !validData[0] || !validData[0].valid) {
+        showAuthError(validData && validData[0] ? validData[0].reason : 'Kod nieprawidłowy.');
+        return;
+      }
+
+      // 2. Sprawdź czy nazwa wolna
+      const { data: existing } = await sb.from('user_profiles').select('username').ilike('username', username).limit(1);
+      if (existing && existing.length > 0) {
+        showAuthError('Nazwa użytkownika jest zajęta.');
+        return;
+      }
+
+      // 3. Stwórz konto w auth.users
+      const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
+        email: usernameToEmail(username),
+        password: password,
+      });
+      if (signUpErr) {
+        if (/already registered/i.test(signUpErr.message)) {
+          showAuthError('Ta nazwa użytkownika już istnieje.');
+        } else if (/password/i.test(signUpErr.message)) {
+          showAuthError('Hasło zbyt słabe lub niepoprawne.');
+        } else {
+          showAuthError(signUpErr.message);
+        }
+        return;
+      }
+
+      const userId = signUpData && signUpData.user && signUpData.user.id;
+      if (!userId) {
+        showAuthError('Rejestracja powiodła się ale konto wymaga potwierdzenia. Skontaktuj się z adminem.');
+        return;
+      }
+
+      // 4. Claim kodu + utwórz profil
+      const { data: claimData, error: claimErr } = await sb.rpc('claim_invitation_code', {
+        p_code: code, p_user_id: userId, p_username: username,
+      });
+      if (claimErr) {
+        showAuthError('Tworzenie profilu nie powiodło się: ' + claimErr.message);
+        return;
+      }
+      if (!claimData || !claimData[0] || !claimData[0].success) {
+        showAuthError(claimData && claimData[0] ? claimData[0].message : 'Nie udało się dokończyć rejestracji.');
+        return;
+      }
+
+      // 5. Sprawdź czy session jest aktywna (jeśli email confirmation OFF, signUp loguje od razu)
+      const { data: sessionData } = await sb.auth.getSession();
+      if (sessionData && sessionData.session) {
+        showToast('Zarejestrowano. Witaj w Skilltree Studio!');
+        hideAuthScreen();
+        bootApp();
+      } else {
+        // Email confirmation jest włączony; trzeba zalogować ręcznie albo zwrócić info
+        showAuthError('Konto utworzone. Zaloguj się teraz w zakładce "Logowanie".');
+        // Przełącz na zakładkę Logowanie
+        $$('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.authTab === 'login'));
+        $('#authPaneLogin').style.display = '';
+        $('#authPaneRegister').style.display = 'none';
+        usernameInput.value = username;
+        passwordInput.focus();
+      }
+    } catch (e) {
+      showAuthError('Błąd: ' + e.message);
+    } finally {
+      registerBtn.disabled = false;
+      registerBtn.textContent = 'Zarejestruj się';
+    }
+  }
+
   loginBtn.onclick = doLogin;
   passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-  emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordInput.focus(); });
-  emailInput.addEventListener('input', clearAuthError);
+  usernameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordInput.focus(); });
+  usernameInput.addEventListener('input', clearAuthError);
+  passwordInput.addEventListener('input', clearAuthError);
+
+  // Register handlers
+  $('#authRegisterBtn').onclick = doRegister;
+  ['regUsername','regPassword','regPassword2','regCode'].forEach(id => {
+    const el = $('#' + id);
+    if (el) {
+      el.addEventListener('input', clearAuthError);
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
+    }
+  });
   passwordInput.addEventListener('input', clearAuthError);
 
   $('#logoutBtn').onclick = async () => {
@@ -4678,6 +6049,229 @@ async function checkAuth(){
   }
 }
 
+// ============= INVITES & USERS (panel super-admina) =============
+
+const Invites = (() => {
+
+  async function loadCodes(){
+    const sb = Sync.getClient();
+    const { data, error } = await sb.from('invitation_codes')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  async function createCode(code, note, maxUses){
+    const sb = Sync.getClient();
+    const { data, error } = await sb.rpc('create_invitation_code', {
+      p_code: code, p_note: note || null, p_max_uses: parseInt(maxUses) || 1, p_expires_at: null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async function deleteCode(code){
+    const sb = Sync.getClient();
+    const { error } = await sb.rpc('delete_invitation_code', { p_code: code });
+    if (error) throw new Error(error.message);
+  }
+
+  async function loadUsers(){
+    const sb = Sync.getClient();
+    const { data, error } = await sb.rpc('list_users');
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  async function setUserAdmin(username, value){
+    const sb = Sync.getClient();
+    const { error } = await sb.rpc('set_user_super_admin', { p_username: username, p_value: value });
+    if (error) throw new Error(error.message);
+  }
+
+  async function renderCodes(){
+    const wrap = $('#invCodesList');
+    wrap.innerHTML = '<p class="help-tip" style="text-align:center;">Wczytuję…</p>';
+    try {
+      const codes = await loadCodes();
+      if (codes.length === 0) {
+        wrap.innerHTML = '<p class="help-tip" style="text-align:center; padding:14px;">Brak kodów. Utwórz pierwszy powyżej.</p>';
+        return;
+      }
+      wrap.innerHTML = codes.map(c => {
+        const depleted = c.used_count >= c.max_uses;
+        return '<div class="invite-row' + (depleted ? ' depleted' : '') + '">' +
+          '<span class="invite-code" data-copy-code="' + escapeHtml(c.code) + '" title="Kliknij żeby skopiować">' + escapeHtml(c.code) + '</span>' +
+          '<span class="invite-note">' + escapeHtml(c.note || '—') + '</span>' +
+          '<span class="invite-uses">' + c.used_count + '/' + c.max_uses + '</span>' +
+          '<span class="invite-creator">' + escapeHtml(c.created_by || '—') + '</span>' +
+          '<button class="icon-btn-sm danger" data-del-code="' + escapeHtml(c.code) + '" title="Usuń kod">⌫</button>' +
+        '</div>';
+      }).join('');
+
+      wrap.querySelectorAll('[data-copy-code]').forEach(el => {
+        el.onclick = () => {
+          const code = el.dataset.copyCode;
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(code).then(() => showToast('Skopiowano: ' + code));
+          }
+        };
+      });
+      wrap.querySelectorAll('[data-del-code]').forEach(btn => {
+        btn.onclick = async () => {
+          const code = btn.dataset.delCode;
+          if (!confirm('Usunąć kod "' + code + '"?')) return;
+          try {
+            await deleteCode(code);
+            renderCodes();
+            showToast('Usunięto kod');
+          } catch(e) { showToast('Błąd: ' + e.message, 'error'); }
+        };
+      });
+    } catch(e) {
+      wrap.innerHTML = '<p class="help-tip" style="color:var(--acc-danger); text-align:center;">' + escapeHtml(e.message) + '</p>';
+    }
+  }
+
+  async function renderUsers(){
+    const wrap = $('#invUsersList');
+    wrap.innerHTML = '<p class="help-tip" style="text-align:center;">Wczytuję…</p>';
+    try {
+      const users = await loadUsers();
+      const me = Roles.getProfile();
+      const myId = me ? me.user_id : null;
+      if (users.length === 0) {
+        wrap.innerHTML = '<p class="help-tip" style="text-align:center;">Brak użytkowników.</p>';
+        return;
+      }
+      wrap.innerHTML = users.map(u => {
+        const isAdmin = u.is_super_admin === true;
+        const isMe = u.user_id === myId;
+        const created = new Date(u.created_at).toLocaleDateString('pl-PL');
+        const action = isMe
+          ? '<span class="user-meta">(to ty)</span>'
+          : isAdmin
+            ? '<button class="tool-btn" data-toggle-admin="' + escapeHtml(u.username) + '" data-value="false">Odbierz admina</button>'
+            : '<button class="tool-btn" data-toggle-admin="' + escapeHtml(u.username) + '" data-value="true">Daj admina</button>';
+        return '<div class="user-row' + (isAdmin ? ' is-admin' : '') + '">' +
+          '<span class="user-name' + (isAdmin ? ' is-admin' : '') + '">' + escapeHtml(u.username) + '</span>' +
+          '<span class="user-meta">utw. ' + created + '</span>' +
+          '<span class="user-meta">' + (isAdmin ? 'super-admin' : 'edytor') + '</span>' +
+          action +
+        '</div>';
+      }).join('');
+
+      wrap.querySelectorAll('[data-toggle-admin]').forEach(btn => {
+        btn.onclick = async () => {
+          const username = btn.dataset.toggleAdmin;
+          const value = btn.dataset.value === 'true';
+          if (!confirm((value ? 'Nadać' : 'Odebrać') + ' uprawnienia super-admina dla "' + username + '"?')) return;
+          try {
+            await setUserAdmin(username, value);
+            await renderUsers();
+            showToast('Zaktualizowano rolę');
+          } catch(e) { showToast('Błąd: ' + e.message, 'error'); }
+        };
+      });
+    } catch(e) {
+      wrap.innerHTML = '<p class="help-tip" style="color:var(--acc-danger); text-align:center;">' + escapeHtml(e.message) + '</p>';
+    }
+  }
+
+  function open(){
+    if (!Roles.isSuperAdmin()) {
+      showToast('Tylko super-admin może otwierać ten panel.', 'error');
+      return;
+    }
+    setTab('codes');
+    $('#invitesModal').classList.add('show');
+    renderCodes();
+  }
+
+  function close(){ $('#invitesModal').classList.remove('show'); }
+
+  function setTab(name){
+    $$('[data-inv-tab]').forEach(t => t.classList.toggle('active', t.dataset.invTab === name));
+    $('#invPaneCodes').style.display = (name === 'codes') ? '' : 'none';
+    $('#invPaneUsers').style.display = (name === 'users') ? '' : 'none';
+    if (name === 'codes') renderCodes();
+    else renderUsers();
+  }
+
+  async function handleCreate(){
+    const code = $('#invCodeInput').value.trim();
+    const note = $('#invNoteInput').value.trim();
+    const maxUses = $('#invMaxUses').value;
+    if (!code) { showToast('Wpisz kod', 'error'); return; }
+    if (!/^[A-Za-z0-9_-]{4,32}$/.test(code)) {
+      showToast('Kod: 4-32 znaki, tylko A-Z, 0-9, _, -', 'error'); return;
+    }
+    try {
+      await createCode(code, note, maxUses);
+      $('#invCodeInput').value = '';
+      $('#invNoteInput').value = '';
+      $('#invMaxUses').value = '1';
+      await renderCodes();
+      showToast('Utworzono kod ' + code);
+    } catch(e) { showToast('Błąd: ' + e.message, 'error'); }
+  }
+
+  return { open, close, setTab, handleCreate };
+})();
+
+// ============= ROLES =============
+// Sprawdza czy zalogowany user ma flagę super_admin i steruje widocznością
+// elementów UI (Historia, Przywróć).
+
+const Roles = (() => {
+  let _profile = null; // { user_id, username, is_super_admin }
+  let _checkedAt = 0;
+
+  async function refresh(){
+    const sb = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (!sb) return null;
+    try {
+      const { data, error } = await sb.rpc('my_profile');
+      if (error) {
+        console.warn('[Roles] my_profile error:', error.message);
+        return null;
+      }
+      _profile = (data && data[0]) || null;
+      _checkedAt = Date.now();
+      applyVisibility();
+      return _profile;
+    } catch(e) {
+      console.warn('[Roles] refresh failed:', e);
+      return null;
+    }
+  }
+
+  function applyVisibility(){
+    const isAdmin = _profile && _profile.is_super_admin === true;
+    // Historia: tylko super-admin może otwierać
+    const histBtn = document.getElementById('changelogBtn');
+    if (histBtn) histBtn.style.display = isAdmin ? '' : 'none';
+    // Przycisk Audytu (audit log) – też zostawiamy dla super-admina (technical info)
+    const auditBtn = document.getElementById('auditBtn');
+    if (auditBtn) auditBtn.style.display = isAdmin ? '' : 'none';
+    // Panel "Zarządzaj kodami zaproszeń" – tylko super-admin
+    const inviteBtn = document.getElementById('invitesBtn');
+    if (inviteBtn) inviteBtn.style.display = isAdmin ? '' : 'none';
+    // Pokaż nazwę użytkownika w nagłówku
+    const userBadge = document.getElementById('userBadge');
+    if (userBadge && _profile) {
+      userBadge.textContent = _profile.username + (isAdmin ? ' ★' : '');
+      userBadge.title = isAdmin ? 'Super-admin' : 'Edytor';
+    }
+  }
+
+  function isSuperAdmin(){ return _profile && _profile.is_super_admin === true; }
+  function getProfile(){ return _profile; }
+  function getUsername(){ return _profile ? _profile.username : null; }
+
+  return { refresh, applyVisibility, isSuperAdmin, getProfile, getUsername };
+})();
+
 function bootApp(){
   // Wczytaj stan z serwera, włącz realtime
   renderAll(); // najpierw render z cachu lokalnego
@@ -4715,6 +6309,8 @@ function bootApp(){
     Updates.refreshDot();
     // Pokaż czerwoną kropkę przy Walidacji jeśli są błędy
     Validate.refreshDot();
+    // Pobierz rolę zalogowanego użytkownika i ukryj/pokaż przyciski
+    Roles.refresh();
   }).catch(e => {
     showToast('Nie udało się połączyć z serwerem: ' + e.message, 'error');
     console.error(e);
