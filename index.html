@@ -1764,6 +1764,7 @@
           <button id="deleteBtn" class="icon-btn danger" title="Usuń (Delete)">⌫</button>
           <button id="saveBtn" class="tool-btn primary">Zapisz</button>
           <button id="aiBtn" class="tool-btn" title="AI Asystent (sugestie, audyt, opisy)">✨ AI</button>
+          <button id="groupsBtn" class="tool-btn" title="Grupy perków (tagi tematyczne)">📦 Grupy</button>
           <button id="invitesBtn" class="tool-btn" title="Zarządzaj zaproszeniami i userami (admin)" style="display:none;">🔑 Zaproszenia</button>
           <button id="searchBtn" class="tool-btn" title="Szukaj perków (Ctrl+K)">🔍 Szukaj</button>
           <button id="validateBtn" class="tool-btn" title="Sprawdź problemy w drzewach">
@@ -1876,6 +1877,28 @@
       <div class="updates-list" id="updatesList"></div>
       <div class="modal-actions">
         <button class="tool-btn primary" data-action="close-updates">Rozumiem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Grupy perków -->
+  <div class="modal-bd" id="groupsModal">
+    <div class="modal modal-wide">
+      <h3>📦 Grupy perków</h3>
+      <p class="help-tip" style="margin-bottom:10px;">
+        Grupa to dodatkowy "tag" który możesz przypisać do perka — niezależny od drzewka. Np. zbiór wszystkich perków Mechanika z różnych specjalizacji.
+      </p>
+      <div class="invite-create">
+        <input id="grpIdInput" placeholder="ID (np. perkGroup_mechanik)" class="mono">
+        <input id="grpLabelInput" placeholder="Nazwa (np. Perki Mechanika)">
+        <input type="color" id="grpColorInput" value="#7d8a78" title="Kolor">
+        <button class="tool-btn primary" id="grpCreateBtn">+ Utwórz</button>
+      </div>
+      <div id="groupsList" class="invites-list">
+        <p class="help-tip" style="text-align:center;">Wczytuję…</p>
+      </div>
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-groups">Zamknij</button>
       </div>
     </div>
   </div>
@@ -2150,6 +2173,7 @@ const Sync = (() => {
       excludesPerks: excl,
       approvalStatus: r.approval_status || 'pending',
       approvalSummary: r.approval_summary || null,
+      groupId: r.group_id || null,
     };
   }
 
@@ -2169,6 +2193,7 @@ const Sync = (() => {
       spec_color: p.specColor || null,
       alignment: p.alignment || 'neutral',
       excludes_perks: p.excludesPerks || [],
+      group_id: p.groupId || null,
       // approval_status/summary nie wysyłamy z save_perk – stan wyłącznie z RPC
       last_modified_by: CLIENT_ID,
     };
@@ -2178,14 +2203,17 @@ const Sync = (() => {
     const sb = client();
 
     if (action === 'load') {
-      const [cats, specs, perks] = await Promise.all([
+      const [cats, specs, perks, groups] = await Promise.all([
         sb.from('categories').select('*').order('sort_order'),
         sb.from('specializations').select('*').order('sort_order'),
         sb.from('perks').select('*'),
+        sb.from('perk_groups').select('*').order('sort_order'),
       ]);
       if (cats.error) throw new Error('categories: ' + cats.error.message);
       if (specs.error) throw new Error('specializations: ' + specs.error.message);
       if (perks.error) throw new Error('perks: ' + perks.error.message);
+      // perk_groups może nie istnieć przed migracją – nie blokuj
+      const groupRows = groups.error ? [] : (groups.data || []);
 
       const types = {};
       for (const c of cats.data) {
@@ -2217,7 +2245,18 @@ const Sync = (() => {
         if (!spec) continue;
         spec.perks[p.id] = rowToPerk(p);
       }
-      return { ok: true, data: { types: types, version: 1 } };
+      // Mapa grup → { id: { id, label, ... } }
+      const perkGroups = {};
+      for (const g of groupRows) {
+        perkGroups[g.id] = {
+          id: g.id,
+          label: g.label || g.id,
+          description: g.description || '',
+          color: g.color || null,
+          sortOrder: g.sort_order || 0,
+        };
+      }
+      return { ok: true, data: { types: types, perkGroups: perkGroups, version: 4 } };
     }
 
     if (action === 'save_perk') {
@@ -2280,6 +2319,28 @@ const Sync = (() => {
       const { categoryId, specId } = payload;
       const { error } = await sb.from('specializations').delete()
         .eq('id', specId).eq('category_id', categoryId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    if (action === 'save_group') {
+      const { group } = payload;
+      const row = {
+        id: group.id,
+        label: group.label || group.id,
+        description: group.description || null,
+        color: group.color || null,
+        sort_order: group.sortOrder || 0,
+        last_modified_by: CLIENT_ID,
+      };
+      const { error } = await sb.from('perk_groups').upsert(row, { onConflict: 'id' });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    if (action === 'delete_group') {
+      const { groupId } = payload;
+      const { error } = await sb.from('perk_groups').delete().eq('id', groupId);
       if (error) throw new Error(error.message);
       return { ok: true };
     }
@@ -2385,6 +2446,7 @@ const Sync = (() => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'specializations' }, handleEvent)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, handleEvent)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'perk_votes' }, handleEvent)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'perk_groups' }, handleEvent)
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') console.log('[Sync] Realtime aktywne');
         else if (status === 'CHANNEL_ERROR') console.warn('[Sync] Realtime błąd kanału');
@@ -2929,6 +2991,23 @@ function renderCanvas(){
       g.appendChild(badgeTxt);
     }
 
+    // Group dot – mała kolorowa kropka w prawym dolnym rogu
+    if (perk.groupId && STATE.data.perkGroups && STATE.data.perkGroups[perk.groupId]) {
+      const grp = STATE.data.perkGroups[perk.groupId];
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('class', 'perk-group-dot');
+      dot.setAttribute('cx', size);
+      dot.setAttribute('cy', size);
+      dot.setAttribute('r', perk.isSpec ? 9 : 7);
+      dot.setAttribute('fill', grp.color || '#7d8a78');
+      dot.setAttribute('stroke', '#1a1a1a');
+      dot.setAttribute('stroke-width', '1.5');
+      const grpTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      grpTitle.textContent = grp.label;
+      dot.appendChild(grpTitle);
+      g.appendChild(dot);
+    }
+
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('class', 'perk-label');
     label.setAttribute('x', 0);
@@ -3058,6 +3137,17 @@ function renderInspector(){
     '<button class="align-btn ' + (align === 'neutral' ? 'active' : '') + '" data-align="neutral">Neutralny</button>' +
     '<button class="align-btn good ' + (align === 'good' ? 'active' : '') + '" data-align="good">Dobry</button>' +
     '<button class="align-btn evil ' + (align === 'evil' ? 'active' : '') + '" data-align="evil">Zły</button>' +
+  '</div>';
+
+  // ===== Group selector =====
+  const groupsAvail = (typeof Groups !== 'undefined') ? Groups.listAll() : [];
+  const currentGroupId = perk.groupId || '';
+  html += '<div class="field" style="margin-top:8px;">' +
+    '<label style="display:flex; align-items:center; justify-content:space-between;">Grupa (zbiór tematyczny) <button class="ai-complete-btn" id="grpManageBtn" type="button" title="Zarządzaj grupami">📦 Zarządzaj</button></label>' +
+    '<select data-bind-group>' +
+      '<option value="">— bez grupy —</option>' +
+      groupsAvail.map(g => '<option value="' + escapeHtml(g.id) + '"' + (g.id === currentGroupId ? ' selected' : '') + '>' + escapeHtml(g.label) + '</option>').join('') +
+    '</select>' +
   '</div>';
 
   html += '<div class="section-title">Wymagane perki</div>';
@@ -3369,6 +3459,23 @@ function renderInspector(){
       syncCurrentPerk();
     };
   });
+
+  // ===== Group selector =====
+  const grpSelect = inspector.querySelector('[data-bind-group]');
+  if (grpSelect) {
+    grpSelect.addEventListener('change', () => {
+      perk.groupId = grpSelect.value || null;
+      renderCanvas();
+      syncCurrentPerk();
+    });
+  }
+  const grpManageBtn = inspector.querySelector('#grpManageBtn');
+  if (grpManageBtn) {
+    grpManageBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      Groups.open();
+    });
+  }
 
   // ===== Wykluczanie: handler usuwania =====
   inspector.querySelectorAll('[data-excl-del]').forEach(b => {
@@ -3862,11 +3969,43 @@ function saveSpecModal(){
   syncSpec(STATE.ui.activeCategory, type.specializations[STATE.modal.editingId || id]);
 }
 
+// Buduje strukturę eksportu: types (jak dotąd) + perkGroups (każda grupa zawiera kopie swoich perków)
+function buildExportData(){
+  const out = {
+    types: STATE.data.types || {},
+    perkGroups: {},
+    version: STATE.data.version || 4,
+  };
+  const groups = STATE.data.perkGroups || {};
+  // Inicjalizuj wszystkie grupy z metadanymi
+  for (const [gid, g] of Object.entries(groups)) {
+    out.perkGroups[gid] = {
+      id: g.id,
+      label: g.label,
+      description: g.description || '',
+      color: g.color || null,
+      sortOrder: g.sortOrder || 0,
+      perks: {},
+    };
+  }
+  // Wyciągnij perki które należą do grup i wstaw je do struktur grup (deep copy żeby nie zmienić STATE)
+  for (const [catId, cat] of Object.entries(STATE.data.types || {})) {
+    for (const [specId, spec] of Object.entries(cat.specializations || {})) {
+      for (const [pid, perk] of Object.entries(spec.perks || {})) {
+        if (perk.groupId && out.perkGroups[perk.groupId]) {
+          out.perkGroups[perk.groupId].perks[pid] = JSON.parse(JSON.stringify(perk));
+        }
+      }
+    }
+  }
+  return out;
+}
+
 function openExportModal(){
   $('#ioModalTitle').textContent = 'Eksport JSON';
   $('#ioModalLabel').textContent = 'Skopiuj treść poniżej';
-  $('#ioModalHelp').textContent = 'Format zgodny ze strukturą Config.Types.';
-  $('#ioModalArea').value = JSON.stringify(STATE.data, null, 2);
+  $('#ioModalHelp').textContent = 'Struktura: types (drzewka) + perkGroups (zbiory tematyczne).';
+  $('#ioModalArea').value = JSON.stringify(buildExportData(), null, 2);
   $('#ioModalArea').readOnly = true;
   $('#applyIoBtn').style.display = 'none';
   $('#copyIoBtn').style.display = '';
@@ -4337,6 +4476,18 @@ const Snapshots = (() => {
 // pierwszy w panelu i steruje "nieprzeczytaną" kropką.
 const APP_UPDATES = [
   {
+    version: '2.0.0',
+    date: '05.05.2026',
+    items: [
+      'Dodano grupy perków – tematyczne zbiory niezależne od drzewek (np. "Perki Mechanika") #UI',
+      'Każdy perk może być przypisany do jednej grupy (opcjonalnie) – nowe pole w edytorze pod alignment',
+      'Grupa ma własny kolor – widoczna jako mała kropka w rogu kafelka perka na canvasie',
+      'Nowy panel 📦 Grupy w toolbarze – CRUD grup z licznikiem perków',
+      'Eksport JSON ma teraz osobną sekcję <code>perkGroups</code> obok <code>types</code> #JSON',
+      'Wymagana migracja SQL: <code>migration-perk-groups.sql</code> #SQL',
+    ],
+  },
+  {
     version: '1.9.0',
     date: '05.05.2026',
     items: [
@@ -4540,10 +4691,12 @@ const PerkSearch = (() => {
 
   function buildIndex(){
     const items = [];
+    const groups = (STATE.data && STATE.data.perkGroups) || {};
     for (const [catId, cat] of Object.entries(STATE.data.types || {})) {
       for (const [specId, spec] of Object.entries(cat.specializations || {})) {
         for (const [perkId, perk] of Object.entries(spec.perks || {})) {
           const desc = (perk.levels && perk.levels[0] && perk.levels[0].desc) || '';
+          const grp = perk.groupId ? groups[perk.groupId] : null;
           items.push({
             catId, specId, perkId,
             label: perk.label || perkId,
@@ -4552,10 +4705,12 @@ const PerkSearch = (() => {
             specColor: perk.specColor || null,
             alignment: perk.alignment || 'neutral',
             approvalStatus: perk.approvalStatus || 'pending',
+            groupId: perk.groupId || null,
+            groupLabel: grp ? grp.label : null,
             specLabel: spec.label || specId,
             catName: (CATEGORIES.find(c => c.id === catId) || {}).name || catId,
             catAccent: (CATEGORIES.find(c => c.id === catId) || {}).accent || '#888',
-            haystack: (perk.label + ' ' + perkId + ' ' + desc).toLowerCase(),
+            haystack: (perk.label + ' ' + perkId + ' ' + desc + ' ' + (grp ? grp.label : '')).toLowerCase(),
           });
         }
       }
@@ -5675,6 +5830,7 @@ function init(){
   $('#changelogBtn').onclick = openChangelogModal;
   $('#updatesBtn').onclick = openUpdatesModal;
   $('#aiBtn').onclick = () => AIAssist.open();
+  $('#groupsBtn').onclick = () => Groups.open();
   $('#invitesBtn').onclick = () => Invites.open();
   $('#searchBtn').onclick = () => PerkSearch.open();
   $('#validateBtn').onclick = () => Validate.open();
@@ -5704,6 +5860,7 @@ function init(){
     if (a === 'close-updates') closeUpdatesModal();
     if (a === 'close-ai') AIAssist.close();
     if (a === 'close-invites') Invites.close();
+    if (a === 'close-groups') Groups.close();
     if (a === 'close-search') PerkSearch.close();
     if (a === 'close-validate') Validate.close();
     if (a === 'close-audit') AuditLog.close();
@@ -5734,6 +5891,14 @@ function init(){
   ['invCodeInput','invNoteInput','invMaxUses'].forEach(id => {
     const el = $('#' + id);
     if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') Invites.handleCreate(); });
+  });
+
+  // Groups modal
+  $('#groupsModal').onclick = (e) => { if (e.target.id === 'groupsModal') Groups.close(); };
+  $('#grpCreateBtn').onclick = () => Groups.handleCreate();
+  ['grpIdInput','grpLabelInput'].forEach(id => {
+    const el = $('#' + id);
+    if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') Groups.handleCreate(); });
   });
 
   // Search input + filtry
@@ -5770,7 +5935,7 @@ function init(){
     } else if (e.key === 'Escape') {
       if (STATE.ui.connectMode) toggleConnectMode();
       else if (STATE.ui.selectedPerkIds.size > 0) { clearSelection(); renderAll(); }
-      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); AIAssist.close(); Invites.close(); PerkSearch.close(); Validate.close(); AuditLog.close(); SnapshotDiff.close(); }
+      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); AIAssist.close(); Invites.close(); Groups.close(); PerkSearch.close(); Validate.close(); AuditLog.close(); SnapshotDiff.close(); }
     } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicatePerk();
@@ -6050,6 +6215,158 @@ async function checkAuth(){
     $('#authError').classList.add('show');
   }
 }
+
+// ============= GROUPS (zbiory perków) =============
+
+const Groups = (() => {
+
+  function listAll(){
+    const groups = (STATE.data && STATE.data.perkGroups) || {};
+    return Object.values(groups).sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0) || (a.label||'').localeCompare(b.label||''));
+  }
+
+  function get(id){
+    return (STATE.data && STATE.data.perkGroups && STATE.data.perkGroups[id]) || null;
+  }
+
+  function countPerks(groupId){
+    let n = 0;
+    for (const cat of Object.values(STATE.data.types || {})) {
+      for (const spec of Object.values(cat.specializations || {})) {
+        for (const p of Object.values(spec.perks || {})) {
+          if (p.groupId === groupId) n++;
+        }
+      }
+    }
+    return n;
+  }
+
+  async function create(id, label, color){
+    if (!/^[a-zA-Z0-9_-]{2,64}$/.test(id)) throw new Error('ID: 2-64 znaki, tylko a-z, 0-9, _, -');
+    if (!label || !label.trim()) throw new Error('Wpisz nazwę grupy');
+    if (!STATE.data.perkGroups) STATE.data.perkGroups = {};
+    if (STATE.data.perkGroups[id]) throw new Error('Grupa o tym ID już istnieje');
+    const group = {
+      id: id,
+      label: label.trim(),
+      description: '',
+      color: color || null,
+      sortOrder: Object.keys(STATE.data.perkGroups).length,
+    };
+    STATE.data.perkGroups[id] = group;
+    Sync.queue('group:' + id, 'save_group', { group });
+    return group;
+  }
+
+  async function rename(id, newLabel){
+    const g = get(id);
+    if (!g) throw new Error('Grupa nie istnieje');
+    g.label = newLabel.trim() || g.label;
+    Sync.queue('group:' + id, 'save_group', { group: g });
+  }
+
+  async function setColor(id, color){
+    const g = get(id);
+    if (!g) return;
+    g.color = color || null;
+    Sync.queue('group:' + id, 'save_group', { group: g });
+  }
+
+  async function remove(id){
+    if (!STATE.data.perkGroups || !STATE.data.perkGroups[id]) return;
+    // Wyczyść groupId z perków
+    for (const cat of Object.values(STATE.data.types || {})) {
+      for (const [specId, spec] of Object.entries(cat.specializations || {})) {
+        for (const [perkId, perk] of Object.entries(spec.perks || {})) {
+          if (perk.groupId === id) {
+            perk.groupId = null;
+            // FK ma ON DELETE SET NULL więc baza sama wyczyści, ale na wszelki
+          }
+        }
+      }
+    }
+    delete STATE.data.perkGroups[id];
+    Sync.queue('group_del:' + id, 'delete_group', { groupId: id });
+  }
+
+  function open(){
+    $('#groupsModal').classList.add('show');
+    render();
+  }
+  function close(){ $('#groupsModal').classList.remove('show'); }
+
+  function render(){
+    const wrap = $('#groupsList');
+    const groups = listAll();
+    if (groups.length === 0) {
+      wrap.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px;">Brak grup. Utwórz pierwszą powyżej.</p>';
+      return;
+    }
+    wrap.innerHTML = groups.map(g => {
+      const n = countPerks(g.id);
+      const colorBox = g.color
+        ? '<span style="display:inline-block; width:14px; height:14px; border-radius:3px; background:' + escapeHtml(g.color) + '; vertical-align:middle; margin-right:8px;"></span>'
+        : '<span style="display:inline-block; width:14px; height:14px; border-radius:3px; background:var(--bg-3); vertical-align:middle; margin-right:8px;"></span>';
+      return '<div class="invite-row">' +
+          colorBox +
+          '<div style="flex:1; min-width:0;">' +
+            '<div style="font-weight:500; color:var(--text-1);">' + escapeHtml(g.label) + '</div>' +
+            '<div style="font-size:10.5px; color:var(--text-3); font-family:monospace;">' + escapeHtml(g.id) + '</div>' +
+          '</div>' +
+          '<span class="invite-uses">' + n + ' perk' + (n === 1 ? '' : (n < 5 ? 'i' : 'ów')) + '</span>' +
+          '<button class="icon-btn-sm" data-grp-edit="' + escapeHtml(g.id) + '" title="Edytuj">✎</button>' +
+          '<button class="icon-btn-sm danger" data-grp-del="' + escapeHtml(g.id) + '" title="Usuń">⌫</button>' +
+        '</div>';
+    }).join('');
+
+    wrap.querySelectorAll('[data-grp-edit]').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.dataset.grpEdit;
+        const g = get(id);
+        if (!g) return;
+        const newLabel = prompt('Nowa nazwa grupy:', g.label);
+        if (newLabel === null) return;
+        try {
+          await rename(id, newLabel);
+          render();
+        } catch(e) { showToast('Błąd: ' + e.message, 'error'); }
+      };
+    });
+    wrap.querySelectorAll('[data-grp-del]').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.dataset.grpDel;
+        const g = get(id);
+        if (!g) return;
+        const n = countPerks(id);
+        if (!confirm('Usunąć grupę "' + g.label + '"?\n' +
+          (n > 0 ? n + ' perk(ów) z tej grupy zostanie odpięte (perki nie zostaną skasowane).\n\n' : '') +
+          'Tej operacji nie można cofnąć.')) return;
+        try {
+          await remove(id);
+          render();
+          renderInspector();
+          renderCanvas();
+        } catch(e) { showToast('Błąd: ' + e.message, 'error'); }
+      };
+    });
+  }
+
+  async function handleCreate(){
+    const id = $('#grpIdInput').value.trim();
+    const label = $('#grpLabelInput').value.trim();
+    const color = $('#grpColorInput').value;
+    if (!id || !label) { showToast('Wpisz ID i nazwę', 'error'); return; }
+    try {
+      await create(id, label, color);
+      $('#grpIdInput').value = '';
+      $('#grpLabelInput').value = '';
+      render();
+      showToast('Utworzono grupę');
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  return { listAll, get, countPerks, create, rename, setColor, remove, open, close, render, handleCreate };
+})();
 
 // ============= INVITES & USERS (panel super-admina) =============
 
