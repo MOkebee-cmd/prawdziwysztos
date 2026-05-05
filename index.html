@@ -5808,7 +5808,9 @@ function init(){
 
   // Konwencja: nazwa użytkownika → fake email "username@skilltree.local"
   // Pozwala używać Supabase Auth (który wymaga email) ale UI pokazuje tylko nazwę.
-  const FAKE_EMAIL_DOMAIN = '@skilltree.local';
+  // RFC 2606 zarezerwowana domena – Supabase akceptuje, ale realnych e-maili nie wysyła
+  // (".local" było odrzucane przez walidację Supabase jako fake-TLD)
+  const FAKE_EMAIL_DOMAIN = '@skilltree.example.com';
   function usernameToEmail(u){
     return u.toLowerCase().trim() + FAKE_EMAIL_DOMAIN;
   }
