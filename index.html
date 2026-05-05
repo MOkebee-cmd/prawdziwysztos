@@ -2111,7 +2111,7 @@ const Sync = (() => {
     if (!window.supabase || !window.supabase.createClient) {
       throw new Error('Biblioteka Supabase nie załadowana – sprawdź połączenie z internetem');
     }
-    if (!APP_CONFIG.supabaseUrl || APP_CONFIG.supabaseUrl.includes('pldahhskaqjeatvahkefT')) {
+    if (!APP_CONFIG.supabaseUrl || APP_CONFIG.supabaseUrl.includes('TWOJ-PROJEKT')) {
       throw new Error('Brak konfiguracji Supabase – wpisz supabaseUrl i supabaseAnonKey w APP_CONFIG');
     }
     _client = window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey, {
@@ -5051,9 +5051,9 @@ const Voting = (() => {
     if (sb) {
       try {
         const { data } = await sb.rpc('my_profile');
-        if (data && data[0] && data[0].username) {
-          _userIdCache = data[0].username;
-          return _userIdCache;
+        if (data && data[0]) {
+          const u = data[0].out_username || data[0].username;
+          if (u) { _userIdCache = u; return _userIdCache; }
         }
       } catch(e){}
     }
@@ -6236,7 +6236,13 @@ const Roles = (() => {
         console.warn('[Roles] my_profile error:', error.message);
         return null;
       }
-      _profile = (data && data[0]) || null;
+      // RPC zwraca pola z prefiksem out_ (żeby nie kolidować z nazwami kolumn w SQL)
+      const raw = (data && data[0]) || null;
+      _profile = raw ? {
+        user_id:        raw.out_user_id        || raw.user_id,
+        username:       raw.out_username       || raw.username,
+        is_super_admin: raw.out_is_super_admin === true || raw.is_super_admin === true,
+      } : null;
       _checkedAt = Date.now();
       applyVisibility();
       return _profile;
