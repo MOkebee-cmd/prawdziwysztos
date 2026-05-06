@@ -812,6 +812,35 @@
     text-align: center;
     font-family: 'JetBrains Mono', monospace;
   }
+  .req-item-v2 {
+    grid-template-columns: 1fr auto auto auto !important;
+    gap: 4px !important;
+  }
+  .req-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.1s;
+  }
+  .req-toggle:hover { border-color: var(--text-3); }
+  .req-toggle input { margin: 0; cursor: pointer; }
+  .req-toggle span {
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .req-toggle:has(input:checked) {
+    background: var(--bg-3);
+    border-color: var(--acc-points);
+  }
+  .req-toggle:has(input:checked) span { color: var(--acc-points); }
   .effect-item .eff-key, .effect-item .eff-val {
     padding: 4px 6px;
     font-size: 11.5px;
@@ -1305,6 +1334,99 @@
     padding: 30px 20px;
     color: var(--text-3);
     font-size: 13px;
+  }
+
+  /* ===== Liniowe ścieżki (PathView v2) ===== */
+  .path-trace {
+    margin-bottom: 22px;
+    padding: 14px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--path-color, var(--acc-points));
+  }
+  .path-trace-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line-1);
+  }
+  .path-trace-flag {
+    width: 32px; height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--path-color, var(--acc-points));
+    border-radius: 50%;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .path-trace-title { flex: 1; min-width: 0; }
+  .path-trace-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+  }
+  .path-trace-spec {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .path-head-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .path-trace-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+  .path-fallback-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: var(--bg-3);
+    border-radius: 3px;
+    font-size: 9.5px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .path-trace-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .path-perk-linear {
+    grid-template-columns: 28px 28px 1fr auto !important;
+  }
+  .path-perk-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--bg-3);
+    color: var(--text-1);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .path-perk-linear.is-start .path-perk-num {
+    background: var(--acc-points);
+    color: #1a1a1a;
+  }
+  .path-perk-linear.is-start {
+    border-color: var(--acc-points);
+    background: linear-gradient(90deg, rgba(232,185,35,0.08), transparent);
+  }
+  .path-perk-arrow.path-end {
+    color: var(--path-color, var(--acc-points));
+    font-size: 11px;
   }
 
   /* ===== Panel zaproszeń & użytkowników ===== */
@@ -2265,6 +2387,61 @@ const CLIENT_ID = (() => {
 })();
 
 // ============= SYNC: Supabase backend =============
+// ============= PERK REQUIREMENT HELPERS =============
+// Nowy format requiredPerks:
+//   { perkId: [isRequired, drawLine] }
+// Stary format:
+//   { perkId: levelNumber }  – traktowany jako [true, true]
+//
+// Funkcje normalizujące i czytające – używać WSZĘDZIE zamiast bezpośredniego dostępu
+// do requiredPerks, żeby kod działał z oboma formatami.
+
+function reqIsRequired(value){
+  if (Array.isArray(value)) return value[0] === true;
+  // Stary format – jeśli zapisany jest level, to też uznajemy że perk jest wymagany
+  return value != null && value !== false;
+}
+
+function reqDrawLine(value){
+  if (Array.isArray(value)) return value[1] === true;
+  // Stary format – też rysujemy linię
+  return value != null && value !== false;
+}
+
+function reqMakeValue(isRequired, drawLine){
+  return [isRequired === true, drawLine === true];
+}
+
+// Konwertuje pojedyncze pole requiredPerks całego perka do nowego formatu (idempotentne)
+function normalizeRequiredPerks(reqMap){
+  if (!reqMap || typeof reqMap !== 'object') return {};
+  const out = {};
+  for (const [id, val] of Object.entries(reqMap)) {
+    if (Array.isArray(val) && val.length === 2) {
+      // Już w nowym formacie
+      out[id] = [val[0] === true, val[1] === true];
+    } else {
+      // Stary format (number/true) – konwertuj na [true, true]
+      out[id] = [true, true];
+    }
+  }
+  return out;
+}
+
+// Konwertuje cały STATE.data – migruje wszystkie perki na nowy format.
+// Wywołać raz po loadAll().
+function normalizeAllRequiredPerks(data){
+  if (!data || !data.types) return;
+  for (const cat of Object.values(data.types)) {
+    for (const spec of Object.values(cat.specializations || {})) {
+      for (const perk of Object.values(spec.perks || {})) {
+        perk.requiredPerks = normalizeRequiredPerks(perk.requiredPerks);
+        if (perk.isStart !== true) perk.isStart = false;
+      }
+    }
+  }
+}
+
 const Sync = (() => {
   let _client = null;
   const pending = new Map();
@@ -2299,6 +2476,8 @@ const Sync = (() => {
     let req = r.required_perks;
     if (typeof req === 'string') { try { req = JSON.parse(req); } catch(e){ req = {}; } }
     if (!req || Array.isArray(req)) req = {};
+    // Normalizuj do nowego formatu [isRequired, drawLine]
+    req = normalizeRequiredPerks(req);
     let levels = r.levels;
     if (typeof levels === 'string') { try { levels = JSON.parse(levels); } catch(e){ levels = [{desc:''}]; } }
     if (!Array.isArray(levels) || levels.length === 0) levels = [{desc:''}];
@@ -2315,6 +2494,7 @@ const Sync = (() => {
       x: r.pos_x || 200,
       y: r.pos_y || 200,
       isSpec: r.is_spec === true,
+      isStart: r.is_start === true,
       specColor: r.spec_color || null,
       alignment: r.alignment || 'neutral',
       excludesPerks: excl,
@@ -2334,9 +2514,10 @@ const Sync = (() => {
       required_level: p.requiredLevel || 1,
       pos_x: p.x || 200,
       pos_y: p.y || 200,
-      required_perks: p.requiredPerks || {},
+      required_perks: normalizeRequiredPerks(p.requiredPerks),
       levels: p.levels || [{desc:''}],
       is_spec: p.isSpec === true,
+      is_start: p.isStart === true,
       spec_color: p.specColor || null,
       alignment: p.alignment || 'neutral',
       excludes_perks: p.excludesPerks || [],
@@ -2996,9 +3177,11 @@ function renderCanvas(){
   viewport.setAttribute('transform', 'translate(' + x + ',' + y + ') scale(' + z + ')');
 
   Object.values(spec.perks).forEach(perk => {
-    Object.keys(perk.requiredPerks || {}).forEach(reqId => {
+    Object.entries(perk.requiredPerks || {}).forEach(([reqId, val]) => {
       const from = spec.perks[reqId];
       if (!from) return;
+      // Linia rysowana tylko gdy drawLine = true
+      if (!reqDrawLine(val)) return;
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       const dy = perk.y - from.y;
       const c1y = from.y + dy * 0.5;
@@ -3155,6 +3338,33 @@ function renderCanvas(){
       g.appendChild(dot);
     }
 
+    // Start marker – flaga w lewym górnym rogu
+    if (perk.isStart === true) {
+      const flagBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      flagBg.setAttribute('class', 'perk-start-flag-bg');
+      flagBg.setAttribute('cx', -size);
+      flagBg.setAttribute('cy', -size);
+      flagBg.setAttribute('r', perk.isSpec ? 12 : 10);
+      flagBg.setAttribute('fill', '#e8b923');
+      flagBg.setAttribute('stroke', '#1a1a1a');
+      flagBg.setAttribute('stroke-width', '1.5');
+      g.appendChild(flagBg);
+      const flagTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      flagTxt.setAttribute('class', 'perk-start-flag-txt');
+      flagTxt.setAttribute('x', -size);
+      flagTxt.setAttribute('y', -size);
+      flagTxt.setAttribute('text-anchor', 'middle');
+      flagTxt.setAttribute('dominant-baseline', 'central');
+      flagTxt.setAttribute('font-size', perk.isSpec ? '12' : '10');
+      flagTxt.setAttribute('font-weight', '700');
+      flagTxt.setAttribute('fill', '#1a1a1a');
+      flagTxt.textContent = '★';
+      g.appendChild(flagTxt);
+      const startTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      startTitle.textContent = 'Punkt startowy ścieżki';
+      flagBg.appendChild(startTitle);
+    }
+
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('class', 'perk-label');
     label.setAttribute('x', 0);
@@ -3198,9 +3408,10 @@ function renderEdgesOnly(){
   edgesLayer.innerHTML = '';
   if (!spec) return;
   Object.values(spec.perks).forEach(perk => {
-    Object.keys(perk.requiredPerks || {}).forEach(reqId => {
+    Object.entries(perk.requiredPerks || {}).forEach(([reqId, val]) => {
       const from = spec.perks[reqId];
       if (!from) return;
+      if (!reqDrawLine(val)) return;
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       const dy = perk.y - from.y;
       const c1y = from.y + dy * 0.5;
@@ -3297,14 +3508,35 @@ function renderInspector(){
     '</select>' +
   '</div>';
 
+  // ===== Punkt startowy ścieżki =====
+  html += '<div class="field" style="margin-top:8px;">' +
+    '<label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 10px; background:var(--bg-2); border:1px solid var(--line-1); border-radius:var(--radius-sm);">' +
+      '<input type="checkbox" data-bind-isstart' + (perk.isStart ? ' checked' : '') + ' style="margin:0;">' +
+      '<span style="font-weight:500;">🛤 Punkt startowy ścieżki</span>' +
+      '<span class="help-tip" style="margin-left:auto; font-size:10.5px;">tu zaczyna się ciąg</span>' +
+    '</label>' +
+  '</div>';
+
   html += '<div class="section-title">Wymagane perki</div>';
+  html += '<p class="help-tip" style="margin-bottom:6px;">' +
+    '<b>✓</b> = perk wymagany do odblokowania &nbsp; <b>━</b> = rysuj linię na canvasie' +
+  '</p>';
   html += '<div id="reqList">';
-  Object.entries(perk.requiredPerks || {}).forEach(([reqId, lvl]) => {
+  Object.entries(perk.requiredPerks || {}).forEach(([reqId, val]) => {
     const req = spec.perks[reqId];
     const name = req ? (req.label || req.id) : reqId;
-    html += '<div class="req-item">' +
+    const isReq  = reqIsRequired(val);
+    const isLine = reqDrawLine(val);
+    html += '<div class="req-item req-item-v2">' +
       '<span class="req-name" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
-      '<input type="number" min="1" class="req-lvl" data-req-lvl="' + escapeHtml(reqId) + '" value="' + lvl + '">' +
+      '<label class="req-toggle" title="Wymagany do odblokowania">' +
+        '<input type="checkbox" data-req-toggle-required="' + escapeHtml(reqId) + '"' + (isReq ? ' checked' : '') + '>' +
+        '<span>✓</span>' +
+      '</label>' +
+      '<label class="req-toggle" title="Rysuj linię na canvasie">' +
+        '<input type="checkbox" data-req-toggle-line="' + escapeHtml(reqId) + '"' + (isLine ? ' checked' : '') + '>' +
+        '<span>━</span>' +
+      '</label>' +
       '<button class="icon-x" data-req-del="' + escapeHtml(reqId) + '" title="Usuń">✕</button>' +
     '</div>';
   });
@@ -3312,7 +3544,6 @@ function renderInspector(){
   if (otherPerks.length > 0) {
     html += '<div class="req-add-row">' +
       '<select id="reqAddSel" style="flex:1;"><option value="">+ Dodaj wymaganie…</option>' + reqOptions + '</select>' +
-      '<input type="number" id="reqAddLvl" value="1" min="1" style="width:60px;">' +
       '<button class="icon-btn-sm" id="reqAddBtn" title="Dodaj">+</button>' +
     '</div>';
   } else {
@@ -3454,13 +3685,37 @@ function renderInspector(){
     });
   }
 
-  inspector.querySelectorAll('[data-req-lvl]').forEach(inp => {
-    inp.addEventListener('input', () => {
-      const id = inp.dataset.reqLvl;
-      perk.requiredPerks[id] = parseInt(inp.value) || 1;
+  // Toggle: czy perk jest wymagany do odblokowania (1. boolean w [isReq, drawLine])
+  inspector.querySelectorAll('[data-req-toggle-required]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.dataset.reqToggleRequired;
+      const cur = perk.requiredPerks[id] || [false, false];
+      const drawLine = Array.isArray(cur) ? (cur[1] === true) : true;
+      perk.requiredPerks[id] = reqMakeValue(cb.checked, drawLine);
+      renderAll();
       syncCurrentPerk();
     });
   });
+  // Toggle: czy rysować linię (2. boolean)
+  inspector.querySelectorAll('[data-req-toggle-line]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.dataset.reqToggleLine;
+      const cur = perk.requiredPerks[id] || [false, false];
+      const isReq = Array.isArray(cur) ? (cur[0] === true) : true;
+      perk.requiredPerks[id] = reqMakeValue(isReq, cb.checked);
+      renderAll();
+      syncCurrentPerk();
+    });
+  });
+  // Toggle: punkt startowy ścieżki
+  const isStartCb = inspector.querySelector('[data-bind-isstart]');
+  if (isStartCb) {
+    isStartCb.addEventListener('change', () => {
+      perk.isStart = isStartCb.checked === true;
+      renderCanvas();
+      syncCurrentPerk();
+    });
+  }
   inspector.querySelectorAll('[data-req-del]').forEach(btn => {
     btn.onclick = () => {
       delete perk.requiredPerks[btn.dataset.reqDel];
@@ -3472,11 +3727,10 @@ function renderInspector(){
   if (reqAddBtn) {
     reqAddBtn.onclick = () => {
       const sel = inspector.querySelector('#reqAddSel').value;
-      const lvl = parseInt(inspector.querySelector('#reqAddLvl').value) || 1;
       if (!sel) return;
       if (createsCycle(spec, perk.id, sel)) { showToast('Cykl niedozwolony', 'error'); return; }
       if (!perk.requiredPerks) perk.requiredPerks = {};
-      perk.requiredPerks[sel] = lvl;
+      perk.requiredPerks[sel] = reqMakeValue(true, true);
       renderAll();
       syncCurrentPerk();
     };
@@ -3701,7 +3955,10 @@ function createsCycle(spec, perkId, candidateReqId){
     visited.add(from);
     const p = spec.perks[from];
     if (!p) return false;
-    return Object.keys(p.requiredPerks || {}).some(reach);
+    // Cykl liczymy tylko po WYMAGANYCH zależnościach
+    return Object.entries(p.requiredPerks || {})
+      .filter(([rid, val]) => reqIsRequired(val))
+      .some(([rid]) => reach(rid));
   }
   return reach(candidateReqId);
 }
@@ -3720,6 +3977,7 @@ function addPerk(){
     requiredLevel: 1, requiredPerks: {},
     levels: [{ desc: '' }],
     x, y,
+    isStart: false,
   };
   spec.perks[id] = perk;
   setSelection([id], id);
@@ -3756,9 +4014,10 @@ function duplicatePerk(){
   // przekieruj na jego kopię. W przeciwnym razie zachowaj oryginalne wymaganie.
   newPerks.forEach(copy => {
     const remapped = {};
-    Object.entries(copy.requiredPerks || {}).forEach(([reqId, lvl]) => {
+    Object.entries(copy.requiredPerks || {}).forEach(([reqId, val]) => {
       const target = idMap.get(reqId) || reqId;
-      remapped[target] = lvl;
+      // Zachowaj wartość jak jest (już znormalizowana po loadAll); jeśli była liczbą – konwertuj
+      remapped[target] = Array.isArray(val) ? val : reqMakeValue(true, true);
     });
     copy.requiredPerks = remapped;
     spec.perks[copy.id] = copy;
@@ -3857,7 +4116,7 @@ function onPerkClick(perkId){
         showToast('Cykl niedozwolony', 'error');
       } else {
         if (!toPerk.requiredPerks) toPerk.requiredPerks = {};
-        toPerk.requiredPerks[fromId] = 1;
+        toPerk.requiredPerks[fromId] = reqMakeValue(true, true);
         showToast('Połączono');
         syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, toPerk);
       }
@@ -4124,35 +4383,36 @@ function saveSpecModal(){
 
 const PerkOrder = (() => {
 
-  // Liczy głębokość dla wszystkich perków w jednym specu.
-  // Zwraca mapę { perkId: order, ... } zaczynając od 1.
+  // Liczy głębokość dla wszystkich perków w jednym specu (uwzględnia tylko WYMAGANE relacje).
   function computeForSpec(spec){
     if (!spec || !spec.perks) return {};
     const perks = spec.perks;
     const orders = {};
     const visiting = new Set();
 
-    function depth(id, path){
+    function depth(id){
       if (orders[id] != null) return orders[id];
-      if (visiting.has(id)) return 1; // cykl – zwracamy 1, nie blokujemy
+      if (visiting.has(id)) return 1;
       visiting.add(id);
       const p = perks[id];
       if (!p) { visiting.delete(id); return 1; }
-      const reqs = Object.keys(p.requiredPerks || {}).filter(r => perks[r]);
+      // Liczymy głębokość tylko po WYMAGANYCH (isRequired=true), bo "drawLine bez wymagania" nie powinno przesuwać orderu
+      const reqs = Object.entries(p.requiredPerks || {})
+        .filter(([rid, val]) => perks[rid] && reqIsRequired(val))
+        .map(([rid]) => rid);
       let d = 1;
       if (reqs.length > 0) {
-        d = 1 + Math.max(...reqs.map(r => depth(r, path)));
+        d = 1 + Math.max(...reqs.map(r => depth(r)));
       }
       visiting.delete(id);
       orders[id] = d;
       return d;
     }
 
-    Object.keys(perks).forEach(id => depth(id, []));
+    Object.keys(perks).forEach(id => depth(id));
     return orders;
   }
 
-  // Dla całego STATE.data – mapa { catId: { specId: { perkId: order } } }
   function computeAll(){
     const result = {};
     for (const [catId, cat] of Object.entries(STATE.data.types || {})) {
@@ -4164,11 +4424,114 @@ const PerkOrder = (() => {
     return result;
   }
 
-  // Dla grupy (perki z różnych specs zebrane w jednej grupie).
-  // Bo grupa nie ma własnych requiredPerks, stosujemy globalną głębokość:
-  // policz order w obrębie spec, potem dla każdego perka z grupy weź jego
-  // spec-order. Wynik: lista posortowana, z duplikatami order (bo dwa różne
-  // spec mogą mieć obie po kilka perków na order=1).
+  // Buduje graf "kogo wymagam" → "kto mnie wymaga" (children).
+  // Następnie dla każdego perka z isStart=true, robi BFS po WYMAGANYCH dzieciach.
+  // Zwraca tablicę ścieżek: [{ startId, perks: [{perkId, perk, depth}], allPerkIds: Set }]
+  function tracePathsForSpec(catId, specId){
+    const cat = STATE.data.types[catId];
+    const spec = cat && cat.specializations[specId];
+    if (!spec || !spec.perks) return [];
+    const perks = spec.perks;
+
+    // Children: dla każdego perka P, lista perków Q które mają P w requiredPerks (jako wymagane)
+    const childrenMap = {};
+    for (const [qid, q] of Object.entries(perks)) {
+      for (const [rid, val] of Object.entries(q.requiredPerks || {})) {
+        if (!perks[rid]) continue;
+        if (!reqIsRequired(val)) continue;
+        if (!childrenMap[rid]) childrenMap[rid] = [];
+        childrenMap[rid].push(qid);
+      }
+    }
+
+    // Znajdź starty
+    const starts = Object.entries(perks)
+      .filter(([id, p]) => p.isStart === true)
+      .map(([id]) => id);
+
+    // Jeżeli nikt nie ma isStart=true, fallback: rooty (perki bez wymagań)
+    const useFallback = starts.length === 0;
+    const fallbackStarts = useFallback
+      ? Object.entries(perks)
+          .filter(([id, p]) => {
+            const reqs = Object.entries(p.requiredPerks || {})
+              .filter(([rid, v]) => perks[rid] && reqIsRequired(v));
+            return reqs.length === 0;
+          })
+          .map(([id]) => id)
+      : [];
+
+    const realStarts = useFallback ? fallbackStarts : starts;
+
+    // Dla każdego startu: BFS, zachowując kolejność odwiedzin
+    const paths = [];
+    for (const startId of realStarts) {
+      const visited = new Set();
+      const ordered = []; // [{perkId, depth}]
+      const queue = [{id: startId, depth: 1}];
+      visited.add(startId);
+      while (queue.length > 0) {
+        const { id, depth } = queue.shift();
+        ordered.push({ perkId: id, perk: perks[id], depth });
+        const childs = (childrenMap[id] || []).slice().sort((a, b) => {
+          // Stabilna kolejność – po pozycji y, potem x, potem id
+          const pa = perks[a], pb = perks[b];
+          return (pa.y - pb.y) || (pa.x - pb.x) || a.localeCompare(b);
+        });
+        for (const cid of childs) {
+          if (visited.has(cid)) continue;
+          visited.add(cid);
+          queue.push({ id: cid, depth: depth + 1 });
+        }
+      }
+      const startPerk = perks[startId];
+      paths.push({
+        startId,
+        startPerk,
+        startLabel: startPerk.label || startId,
+        perks: ordered,
+        allPerkIds: visited,
+        isFallback: useFallback,
+      });
+    }
+    return paths;
+  }
+
+  // Lista ścieżek dla grupy – łączy ścieżki ze wszystkich specs do których należą perki z grupy
+  function tracePathsForGroup(groupId){
+    if (!groupId) return [];
+    // Znajdź wszystkie specs które mają perki w tej grupie
+    const specsWithGroup = new Set();
+    for (const [catId, cat] of Object.entries(STATE.data.types || {})) {
+      for (const [specId, spec] of Object.entries(cat.specializations || {})) {
+        for (const perk of Object.values(spec.perks || {})) {
+          if (perk.groupId === groupId) specsWithGroup.add(catId + '|' + specId);
+        }
+      }
+    }
+    const allPaths = [];
+    for (const key of specsWithGroup) {
+      const [catId, specId] = key.split('|');
+      const paths = tracePathsForSpec(catId, specId);
+      // Filtruj ścieżki: zostaw tylko te które MAJĄ perki z grupy
+      for (const path of paths) {
+        const filtered = path.perks.filter(it => it.perk.groupId === groupId);
+        if (filtered.length === 0) continue;
+        const cat = STATE.data.types[catId];
+        const spec = cat.specializations[specId];
+        allPaths.push({
+          ...path,
+          catId, specId,
+          catName: cat.name,
+          specLabel: spec.label || specId,
+          perks: filtered,
+        });
+      }
+    }
+    return allPaths;
+  }
+
+  // Dla grupy w trybie "płaska lista" (legacy) – wszystkie perki z grupy posortowane po order
   function listForGroup(groupId){
     if (!groupId) return [];
     const items = [];
@@ -4191,7 +4554,6 @@ const PerkOrder = (() => {
     return items;
   }
 
-  // Dla speca – posortowane perki + ich orders
   function listForSpec(catId, specId){
     const cat = STATE.data.types[catId];
     if (!cat) return [];
@@ -4206,7 +4568,7 @@ const PerkOrder = (() => {
     return items;
   }
 
-  return { computeForSpec, computeAll, listForGroup, listForSpec };
+  return { computeForSpec, computeAll, listForGroup, listForSpec, tracePathsForSpec, tracePathsForGroup };
 })();
 
 function buildExportData(){
@@ -4259,6 +4621,10 @@ function buildExportData(){
       for (const [pid, perk] of sortedPerkEntries) {
         const perkCopy = JSON.parse(JSON.stringify(perk));
         perkCopy.order = orders[pid] || 1;
+        // Upewnij się że isStart jest jawnie boolean (nie undefined)
+        perkCopy.isStart = perk.isStart === true;
+        // Normalizuj requiredPerks do nowego formatu
+        perkCopy.requiredPerks = normalizeRequiredPerks(perk.requiredPerks);
         specOut.perks[pid] = perkCopy;
         // Jeżeli ma grupę – wstaw też do grupy (z order)
         if (perk.groupId && out.perkGroups[perk.groupId]) {
@@ -4516,6 +4882,11 @@ function dataToLuaWithLocale(data, options){
         lines.push(indentStr(5) + 'requiredLevel = ' + (perk.requiredLevel || 1) + ',');
         lines.push(indentStr(5) + 'order = ' + (perkOrders[pid] || 1) + ',');
 
+        // Punkt startowy ścieżki
+        if (perk.isStart === true) {
+          lines.push(indentStr(5) + 'isStart = true,');
+        }
+
         // Spec marker + custom kolor (tylko gdy ustawione, żeby nie zaśmiecać outputu)
         if (perk.isSpec) {
           lines.push(indentStr(5) + 'isSpec = true,');
@@ -4541,16 +4912,19 @@ function dataToLuaWithLocale(data, options){
           lines.push(indentStr(5) + '},');
         }
 
-        // requiredPerks – tylko jeżeli niepuste, pomijaj te wskazujące na rejected
-        const reqPerks = perk.requiredPerks || {};
+        // requiredPerks – nowy format [isRequired, drawLine] jako Lua tablica { true, true }
+        const reqPerks = normalizeRequiredPerks(perk.requiredPerks);
         const reqEntries = Object.entries(reqPerks).filter(([reqId]) => {
           const r = perks[reqId];
           return r && r.approvalStatus !== 'rejected';
         });
         if (reqEntries.length > 0) {
           lines.push(indentStr(5) + 'requiredPerks = {');
-          reqEntries.forEach(([reqId, reqLvl]) => {
-            lines.push(indentStr(6) + '["' + escapeLuaString(reqId) + '"] = ' + (reqLvl || 1) + ',');
+          reqEntries.forEach(([reqId, val]) => {
+            const isReq = reqIsRequired(val);
+            const isLine = reqDrawLine(val);
+            lines.push(indentStr(6) + '["' + escapeLuaString(reqId) + '"] = { ' +
+              (isReq ? 'true' : 'false') + ', ' + (isLine ? 'true' : 'false') + ' },');
           });
           lines.push(indentStr(5) + '},');
         }
@@ -4769,6 +5143,21 @@ const Snapshots = (() => {
 // auto-stylowane na końcu wpisu. Najnowszy wpis pierwszy = pojawia się jako
 // pierwszy w panelu i steruje "nieprzeczytaną" kropką.
 const APP_UPDATES = [
+  {
+    version: '2.2.0',
+    date: '05.05.2026',
+    items: [
+      'Nowy format <code>requiredPerks</code>: <code>{ perkId: [isRequired, drawLine] }</code> — dwa booleany zamiast liczby #JSON',
+      'Pierwszy bool kontroluje czy perk jest wymagany do odblokowania, drugi czy rysować linię na canvasie #UI',
+      'Nowe pole <code>isStart: boolean</code> na perku — oznacza punkt startowy ścieżki rozwoju #JSON',
+      'Punkty startowe widoczne na canvasie jako żółta gwiazdka ★ w lewym górnym rogu kafelka #UI',
+      'Panel 🛤 Ścieżka pokazuje teraz <b>liniowe ścieżki</b> od każdego perka isStart — kolejne kroki: 1 → 2 → 3 → 4 zamiast grupowania po poziomie',
+      'Inspektor: checkbox "🛤 Punkt startowy" + dwa togglery <b>✓</b> / <b>━</b> dla każdego wymagania',
+      'Eksport Lua: <code>requiredPerks</code> jako tablica <code>{ true, true }</code> + pole <code>isStart = true</code> #Lua',
+      'Stare dane konwertowane automatycznie: <code>{perkId: 1}</code> → <code>{perkId: [true, true]}</code>',
+      'Wymagana migracja SQL: <code>migration-isstart.sql</code> #SQL',
+    ],
+  },
   {
     version: '2.1.0',
     date: '05.05.2026',
@@ -5192,11 +5581,15 @@ const Validate = (() => {
       visited.add(id);
       const p = spec.perks[id];
       if (!p) return false;
-      return Object.keys(p.requiredPerks || {}).some(reach);
+      return Object.entries(p.requiredPerks || {})
+        .filter(([rid, val]) => reqIsRequired(val))
+        .some(([rid]) => reach(rid));
     }
     const start = spec.perks[startId];
     if (!start) return false;
-    return Object.keys(start.requiredPerks || {}).some(reach);
+    return Object.entries(start.requiredPerks || {})
+      .filter(([rid, val]) => reqIsRequired(val))
+      .some(([rid]) => reach(rid));
   }
 
   function refreshDot(){
@@ -5718,10 +6111,10 @@ const AIAssist = (() => {
       suffix++;
     }
 
-    // Walidacja requiredPerks – zostaw tylko te które naprawdę istnieją
+    // Walidacja requiredPerks – zostaw tylko te które naprawdę istnieją; nowy format
     const reqClean = {};
-    for (const [reqId, lvl] of Object.entries(s.requiredPerks || {})) {
-      if (spec.perks[reqId]) reqClean[reqId] = lvl || 1;
+    for (const [reqId, val] of Object.entries(s.requiredPerks || {})) {
+      if (spec.perks[reqId]) reqClean[reqId] = reqMakeValue(true, true);
     }
 
     // Pozycja: jeśli ma wymagania, postaw obok pierwszego z nich; inaczej w środku
@@ -6057,6 +6450,8 @@ function applyImport(){
           if (typeof p.y !== 'number') p.y = 200 + Math.floor(i / 5) * 140;
           if (!p.levels) p.levels = [{ desc: '' }];
           if (!p.requiredPerks) p.requiredPerks = {};
+          p.requiredPerks = normalizeRequiredPerks(p.requiredPerks);
+          if (p.isStart !== true) p.isStart = false;
         });
       });
     });
@@ -6528,55 +6923,75 @@ async function checkAuth(){
   }
 }
 
-// ============= PATHVIEW (wizualna kolejność rozwoju) =============
+// ============= PATHVIEW (liniowe ścieżki rozwoju) =============
 
 const PathView = (() => {
 
-  function renderPerksByOrder(items, container){
-    if (!items || items.length === 0) {
-      container.innerHTML = '<div class="path-empty">Brak perków do wyświetlenia.</div>';
-      return;
-    }
-    // Pogrupuj po order
-    const byOrder = {};
-    items.forEach(it => {
-      const o = it.order || 1;
-      if (!byOrder[o]) byOrder[o] = [];
-      byOrder[o].push(it);
-    });
-    const orderKeys = Object.keys(byOrder).map(Number).sort((a, b) => a - b);
+  // Renderuje pojedynczą ścieżkę jako liniową listę "1. → 2. → 3. ..."
+  function renderSinglePath(path, container){
+    const perks = path.perks || [];
+    if (perks.length === 0) return '';
+    const startLabel = path.startLabel || (path.startPerk && path.startPerk.label) || path.startId;
+    const colorAccent = path.startPerk && path.startPerk.specColor
+      ? path.startPerk.specColor
+      : (path.catName ? '#7d8a78' : 'var(--acc-points)');
 
-    container.innerHTML = orderKeys.map(o => {
-      const perks = byOrder[o];
-      const perksHtml = perks.map(it => {
-        const cat = CATEGORIES.find(c => c.id === it.catId);
-        const accent = (it.perk.isSpec && it.perk.specColor)
-          ? it.perk.specColor
-          : (cat ? cat.accent : 'var(--bg-3)');
-        const status = it.perk.approvalStatus || 'pending';
-        const iconCls = 'path-perk-icon' + (it.perk.isSpec ? ' is-spec' : '');
-        const meta = (it.specLabel ? (it.catName + ' › ' + it.specLabel + ' · ') : '') +
-                     'L' + (it.perk.requiredLevel || 1);
-        return '<div class="path-perk status-' + status + '" data-jump="' +
-              escapeHtml(it.catId) + '|' + escapeHtml(it.specId) + '|' + escapeHtml(it.perkId) + '"' +
-              ' style="--cat-color:' + escapeHtml(accent) + ';">' +
-            '<div class="' + iconCls + '">' + escapeHtml((it.perk.label || '?').charAt(0).toUpperCase()) + '</div>' +
-            '<div class="path-perk-info">' +
-              '<div class="path-perk-label">' + escapeHtml(it.perk.label || it.perkId) + '</div>' +
-              '<div class="path-perk-meta">' + escapeHtml(meta) + '</div>' +
-            '</div>' +
-            '<span class="path-perk-arrow">→</span>' +
-          '</div>';
-      }).join('');
-      return '<div class="path-level">' +
-          '<div class="path-level-head">' +
-            '<div class="path-level-num">' + o + '</div>' +
-            '<span class="path-level-title">Poziom ' + o + '</span>' +
-            '<span class="path-level-count">' + perks.length + ' perk' + (perks.length === 1 ? '' : (perks.length < 5 ? 'i' : 'ów')) + '</span>' +
+    const fallbackTag = path.isFallback
+      ? '<span class="path-fallback-tag" title="Brak perka oznaczonego jako start - użyto roota">auto</span>'
+      : '';
+
+    const headerExtra = path.specLabel
+      ? '<span class="path-head-meta">' + escapeHtml(path.catName + ' › ' + path.specLabel) + '</span>'
+      : '';
+
+    const itemsHtml = perks.map((it, idx) => {
+      const cat = CATEGORIES.find(c => c.id === path.catId) || (path.catId ? null : null);
+      const accent = (it.perk.isSpec && it.perk.specColor)
+        ? it.perk.specColor
+        : (cat ? cat.accent : 'var(--bg-3)');
+      const status = it.perk.approvalStatus || 'pending';
+      const iconCls = 'path-perk-icon' + (it.perk.isSpec ? ' is-spec' : '');
+      const isStart = it.perk.isStart === true;
+      const num = idx + 1;
+      const meta = 'L' + (it.perk.requiredLevel || 1) +
+        (it.perk.isStart ? ' · 🛤 START' : '') +
+        (it.perk.alignment === 'good' ? ' · Dobry' : (it.perk.alignment === 'evil' ? ' · Zły' : ''));
+
+      return '<div class="path-perk path-perk-linear status-' + status + (isStart ? ' is-start' : '') + '" data-jump="' +
+            escapeHtml(path.catId) + '|' + escapeHtml(path.specId) + '|' + escapeHtml(it.perkId) + '"' +
+            ' style="--cat-color:' + escapeHtml(accent) + ';">' +
+          '<span class="path-perk-num">' + num + '</span>' +
+          '<div class="' + iconCls + '">' + escapeHtml((it.perk.label || '?').charAt(0).toUpperCase()) + '</div>' +
+          '<div class="path-perk-info">' +
+            '<div class="path-perk-label">' + escapeHtml(it.perk.label || it.perkId) + '</div>' +
+            '<div class="path-perk-meta">' + escapeHtml(meta) + '</div>' +
           '</div>' +
-          '<div class="path-perks">' + perksHtml + '</div>' +
+          (idx < perks.length - 1 ? '<span class="path-perk-arrow">→</span>' : '<span class="path-perk-arrow path-end">●</span>') +
         '</div>';
     }).join('');
+
+    return '<div class="path-trace" style="--path-color:' + escapeHtml(colorAccent) + ';">' +
+        '<div class="path-trace-head">' +
+          '<div class="path-trace-flag">🛤</div>' +
+          '<div class="path-trace-title">' +
+            '<div class="path-trace-name">' + escapeHtml(startLabel) + ' ' + fallbackTag + '</div>' +
+            (headerExtra ? '<div class="path-trace-spec">' + headerExtra + '</div>' : '') +
+          '</div>' +
+          '<span class="path-trace-count">' + perks.length + ' perk' + (perks.length === 1 ? '' : (perks.length < 5 ? 'i' : 'ów')) + '</span>' +
+        '</div>' +
+        '<div class="path-trace-body">' + itemsHtml + '</div>' +
+      '</div>';
+  }
+
+  function renderPaths(paths, container){
+    if (!paths || paths.length === 0) {
+      container.innerHTML = '<div class="path-empty">' +
+        '<p>Brak ścieżek do wyświetlenia.</p>' +
+        '<p style="font-size:11.5px; margin-top:8px;">Oznacz dowolny perk jako <b>🛤 Punkt startowy</b> w panelu po prawej stronie, żeby pojawił się tutaj jako początek ścieżki.</p>' +
+        '</div>';
+      return;
+    }
+    container.innerHTML = paths.map(p => renderSinglePath(p, container)).join('');
 
     container.querySelectorAll('[data-jump]').forEach(el => {
       el.onclick = () => {
@@ -6601,15 +7016,16 @@ const PathView = (() => {
       container.innerHTML = '';
       return;
     }
-    lblEl.textContent = (cat ? cat.name : '?') + ' › ' + (spec.label || spec.id) +
-      ' · ' + Object.keys(spec.perks || {}).length + ' perków';
-
-    const items = PerkOrder.listForSpec(catId, specId).map(it => ({
-      ...it,
+    const paths = PerkOrder.tracePathsForSpec(catId, specId).map(p => ({
+      ...p,
+      catId, specId,
       catName: cat.name,
       specLabel: spec.label || spec.id,
     }));
-    renderPerksByOrder(items, container);
+    const totalPerks = paths.reduce((s, p) => s + p.perks.length, 0);
+    lblEl.textContent = (cat ? cat.name : '?') + ' › ' + (spec.label || spec.id) +
+      ' · ' + paths.length + ' ścieżek · ' + totalPerks + ' perków łącznie';
+    renderPaths(paths, container);
   }
 
   function populateGroupSelect(){
@@ -6625,8 +7041,8 @@ const PathView = (() => {
       container.innerHTML = '<div class="path-empty">Wybierz grupę z listy powyżej.</div>';
       return;
     }
-    const items = PerkOrder.listForGroup(groupId);
-    renderPerksByOrder(items, container);
+    const paths = PerkOrder.tracePathsForGroup(groupId);
+    renderPaths(paths, container);
   }
 
   function open(){
@@ -7034,6 +7450,7 @@ function bootApp(){
   renderAll(); // najpierw render z cachu lokalnego
   Sync.loadAll().then(data => {
     if (data && data.types) {
+      normalizeAllRequiredPerks(data);
       STATE.data = data;
       const activeType = STATE.data.types[STATE.ui.activeCategory];
       if (!activeType || !activeType.specializations[STATE.ui.activeSpecId]) {
@@ -7045,6 +7462,7 @@ function bootApp(){
     }
     Sync.startPolling((newData) => {
       if (!newData || !newData.types) return;
+      normalizeAllRequiredPerks(newData);
       const selPerk = STATE.ui.selectedPerkId;
       const selSpec = STATE.ui.activeSpecId;
       const selCat  = STATE.ui.activeCategory;
