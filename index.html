@@ -2083,6 +2083,118 @@
   }
   .audit-day-header:first-child { margin-top: 0; }
 
+  /* ===== Strumień akceptacji ===== */
+  .approval-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 56vh;
+    overflow-y: auto;
+  }
+  .approval-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: start;
+    padding: 11px 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--vote-color, var(--line-2));
+    font-size: 12.5px;
+  }
+  .approval-item.vote-approve       { --vote-color: #6ab07a; }
+  .approval-item.vote-reject        { --vote-color: #c75959; }
+  .approval-item.vote-needs_changes { --vote-color: #e8b923; }
+  .approval-item.vote-in_review     { --vote-color: #788494; }
+  .approval-vote-icon {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--vote-color);
+    color: #1a1a1a;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .approval-body { min-width: 0; }
+  .approval-line1 {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .approval-voter {
+    color: var(--text-1);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .approval-action {
+    color: var(--text-2);
+    font-size: 12px;
+  }
+  .approval-perk-link {
+    color: var(--acc-points);
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.1s;
+  }
+  .approval-perk-link:hover {
+    text-decoration-color: var(--acc-points);
+    color: #f5cf5a;
+  }
+  .approval-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-3);
+    margin-bottom: 6px;
+  }
+  .approval-comment {
+    margin-top: 4px;
+    padding: 6px 10px;
+    background: var(--bg-1);
+    border-left: 2px solid var(--text-3);
+    border-radius: 3px;
+    font-style: italic;
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .approval-status-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-left: 4px;
+  }
+  .approval-status-tag.approved      { background: rgba(106,176,122,0.18); color: #a3d4ad; }
+  .approval-status-tag.rejected      { background: rgba(199,89,89,0.18);   color: #e0a8a8; }
+  .approval-status-tag.needs_changes { background: rgba(232,185,35,0.18);  color: var(--acc-points); }
+  .approval-status-tag.in_review     { background: rgba(120,132,148,0.22); color: #c9d2dd; }
+  .approval-status-tag.pending       { background: var(--bg-3); color: var(--text-3); }
+  .approval-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-3);
+    flex-shrink: 0;
+    align-self: start;
+    padding-top: 8px;
+    white-space: nowrap;
+  }
+
   /* ===== Diff modal ===== */
   .diff-section {
     margin-bottom: 18px;
@@ -2206,6 +2318,7 @@
           <button id="deleteBtn" class="icon-btn danger" title="Usuń (Delete)">⌫</button>
           <button id="saveBtn" class="tool-btn primary">Zapisz</button>
           <button id="aiBtn" class="tool-btn" title="AI Asystent (sugestie, audyt, opisy)">✨ AI</button>
+          <button id="approvalsBtn" class="tool-btn" title="Strumień akceptacji (kto, jak, kiedy zagłosował)">📑 Akceptacje</button>
           <button id="pathBtn" class="tool-btn" title="Ścieżka perków (kolejność rozwoju)">🛤 Ścieżka</button>
           <button id="groupsBtn" class="tool-btn" title="Grupy perków (tagi tematyczne)">📦 Grupy</button>
           <button id="invitesBtn" class="tool-btn" title="Zarządzaj zaproszeniami i userami (admin)" style="display:none;">🔑 Zaproszenia</button>
@@ -2323,6 +2436,53 @@
       <div class="updates-list" id="updatesList"></div>
       <div class="modal-actions">
         <button class="tool-btn primary" data-action="close-updates">Rozumiem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Strumień akceptacji -->
+  <div class="modal-bd" id="approvalsModal">
+    <div class="modal modal-wide">
+      <h3>📑 Strumień akceptacji</h3>
+      <div class="audit-filters">
+        <div class="audit-filter-row">
+          <label>Zakres:</label>
+          <select id="apprRangeSelect">
+            <option value="today">Dziś</option>
+            <option value="7d" selected>Ostatnie 7 dni</option>
+            <option value="30d">Ostatnie 30 dni</option>
+            <option value="custom">Niestandardowy zakres…</option>
+            <option value="all">Wszystko (max 500)</option>
+          </select>
+          <div id="apprCustomRange" style="display:none; gap:6px; align-items:center;">
+            <input type="date" id="apprDateFrom" title="Od">
+            <span style="color:var(--text-3);">–</span>
+            <input type="date" id="apprDateTo" title="Do">
+          </div>
+          <button class="tool-btn" id="apprReloadBtn" title="Odśwież">↻</button>
+        </div>
+        <div class="audit-filter-row">
+          <label>Filtr:</label>
+          <select id="apprVoteFilter">
+            <option value="all">Wszystkie głosy</option>
+            <option value="approve">Tylko zatwierdzenia</option>
+            <option value="reject">Tylko odrzucenia</option>
+            <option value="needs_changes">Tylko poprawki</option>
+            <option value="in_review">Tylko recenzje</option>
+          </select>
+          <select id="apprVoterFilter">
+            <option value="all">Wszyscy użytkownicy</option>
+            <option value="me">Tylko moje głosy</option>
+          </select>
+          <input type="text" id="apprSearch" placeholder="szukaj po perku lub komentarzu…" style="flex:1;">
+        </div>
+        <p class="help-tip" id="apprMeta" style="margin: 6px 0 4px 0;">—</p>
+      </div>
+      <div class="approval-feed" id="approvalFeed">
+        <p class="help-tip" style="text-align:center; padding:20px;">Wczytuję…</p>
+      </div>
+      <div class="modal-actions">
+        <button class="tool-btn primary" data-action="close-approvals">Zamknij</button>
       </div>
     </div>
   </div>
@@ -5386,6 +5546,17 @@ const Snapshots = (() => {
 // pierwszy w panelu i steruje "nieprzeczytaną" kropką.
 const APP_UPDATES = [
   {
+    version: '2.5.0',
+    date: '11.05.2026',
+    items: [
+      'Nowy panel 📑 Akceptacje — strumień wszystkich głosów (zatwierdzenia / odrzucenia / poprawki) widoczny dla każdego użytkownika #UI',
+      'Każdy głos pokazuje: kto, jak zagłosował, kiedy, komentarz oraz aktualny status perka',
+      'Nazwa perka jest <b>klikalnym linkiem</b> — kliknięcie zaznacza perk i przenosi do niego na canvasie',
+      'Filtry: zakres dat (dziś / 7 dni / 30 dni / własny), typ głosu, własne głosy vs wszystkich, wyszukiwarka po treści',
+      'Wymagana migracja SQL: <code>migration-approval-feed.sql</code> #SQL',
+    ],
+  },
+  {
     version: '2.4.0',
     date: '11.05.2026',
     items: [
@@ -5921,6 +6092,212 @@ const Validate = (() => {
   function close(){ $('#validateModal').classList.remove('show'); }
 
   return { open, close, refreshDot, findIssues };
+})();
+
+// ============= APPROVALS FEED (strumień głosów akceptacji) =============
+
+const Approvals = (() => {
+  let _rows = [];
+
+  // ============= Fetch =============
+
+  async function fetchRange(fromIso, toIso, voter){
+    const client = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (!client) throw new Error('Brak klienta Supabase');
+    const { data, error } = await client.rpc('get_approval_feed', {
+      p_from: fromIso, p_to: toIso, p_limit: 500, p_voter: voter || null,
+    });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  // ============= Formatowanie =============
+
+  function relativeTime(iso){
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'teraz';
+    if (diffMin < 60) return diffMin + ' min temu';
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return diffH + 'h temu';
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 7) return diffD + ' dni temu';
+    const pad = (n) => String(n).padStart(2, '0');
+    return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function shortVoter(v){
+    if (!v) return '?';
+    const s = String(v);
+    if (s.includes('@')) return s.split('@')[0];
+    if (s.length > 20) return s.slice(0, 8) + '…';
+    return s;
+  }
+
+  function voteVerb(vote){
+    if (vote === 'approve') return 'zatwierdza';
+    if (vote === 'reject') return 'odrzuca';
+    if (vote === 'needs_changes') return 'wymaga zmian dla';
+    if (vote === 'in_review') return 'recenzuje';
+    return 'głosuje na';
+  }
+
+  function voteIcon(vote){
+    if (vote === 'approve') return '✓';
+    if (vote === 'reject') return '✗';
+    if (vote === 'needs_changes') return '⚠';
+    if (vote === 'in_review') return '◐';
+    return '·';
+  }
+
+  function statusLabel(s){
+    const m = { approved:'Zatwierdzony', rejected:'Odrzucony', needs_changes:'Wymaga zmian', in_review:'W trakcie', pending:'Oczekujący' };
+    return m[s] || s || 'Oczekujący';
+  }
+
+  // ============= Render =============
+
+  function renderRow(row){
+    const status = row.perk_approval_status || 'pending';
+    const perkLabel = row.perk_label || row.perk_id;
+    const path = (row.category_name || '?') + ' › ' + (row.spec_label || row.spec_id || '?');
+
+    return '<div class="approval-item vote-' + (row.vote || 'pending') + '">' +
+      '<div class="approval-vote-icon">' + voteIcon(row.vote) + '</div>' +
+      '<div class="approval-body">' +
+        '<div class="approval-line1">' +
+          '<span class="approval-voter">' + escapeHtml(shortVoter(row.voter)) + '</span>' +
+          '<span class="approval-action">' + escapeHtml(voteVerb(row.vote)) + '</span>' +
+          '<span class="approval-perk-link" ' +
+            'data-jump="' + escapeHtml(row.category_id) + '|' + escapeHtml(row.spec_id) + '|' + escapeHtml(row.perk_id) + '" ' +
+            'title="Kliknij żeby przeskoczyć">' + escapeHtml(perkLabel) + '</span>' +
+          '<span class="approval-status-tag ' + status + '">' + escapeHtml(statusLabel(status)) + '</span>' +
+        '</div>' +
+        '<div class="approval-meta">' + escapeHtml(path) + '</div>' +
+        (row.comment ? '<div class="approval-comment">' + escapeHtml(row.comment) + '</div>' : '') +
+      '</div>' +
+      '<span class="approval-time" title="' + escapeHtml(new Date(row.created_at).toLocaleString('pl-PL')) + '">' +
+        escapeHtml(relativeTime(row.created_at)) +
+      '</span>' +
+    '</div>';
+  }
+
+  function applyFilters(rows){
+    const vote = $('#apprVoteFilter').value;
+    const voter = $('#apprVoterFilter').value;
+    const search = ($('#apprSearch').value || '').toLowerCase().trim();
+    return rows.filter(r => {
+      if (vote !== 'all' && r.vote !== vote) return false;
+      if (voter === 'me') {
+        // klient filtruje też frontowo (RPC robi już bazowy filtr, ale podczas zmiany dropdown bez reload)
+        const me = (typeof Roles !== 'undefined') ? Roles.getUsername() : null;
+        if (me && r.voter !== me) return false;
+      }
+      if (!search) return true;
+      const hay = (r.perk_label || '') + ' ' + (r.comment || '') + ' ' + (r.voter || '');
+      return hay.toLowerCase().includes(search);
+    });
+  }
+
+  function renderList(){
+    const wrap = $('#approvalFeed');
+    const meta = $('#apprMeta');
+    const filtered = applyFilters(_rows);
+    meta.textContent = filtered.length + ' głos' + (filtered.length === 1 ? '' : (filtered.length < 5 ? 'y' : 'ów')) +
+      (filtered.length !== _rows.length ? ' (z ' + _rows.length + ' łącznie)' : '');
+
+    if (filtered.length === 0) {
+      wrap.innerHTML = '<p class="help-tip" style="text-align:center; padding:30px;">' +
+        (_rows.length === 0
+          ? 'Brak głosów w wybranym zakresie. Zacznij głosować w panelu po prawej stronie!'
+          : 'Brak wpisów pasujących do filtrów.') +
+        '</p>';
+      return;
+    }
+    wrap.innerHTML = filtered.map(renderRow).join('');
+
+    // Kliknięcia w nazwę perka = jump
+    wrap.querySelectorAll('[data-jump]').forEach(el => {
+      el.onclick = (e) => {
+        e.preventDefault();
+        const [catId, specId, perkId] = el.dataset.jump.split('|');
+        close();
+        if (typeof PerkSearch !== 'undefined' && PerkSearch.jumpToPerk) {
+          PerkSearch.jumpToPerk(catId, specId, perkId);
+        }
+      };
+    });
+  }
+
+  // ============= Date range =============
+
+  function computeRange(preset){
+    const now = new Date();
+    const startOfDay = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+    const endOfDay   = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+
+    if (preset === 'today') return [startOfDay(now).toISOString(), null];
+    if (preset === '7d') {
+      const x = new Date(now); x.setDate(x.getDate() - 7);
+      return [startOfDay(x).toISOString(), null];
+    }
+    if (preset === '30d') {
+      const x = new Date(now); x.setDate(x.getDate() - 30);
+      return [startOfDay(x).toISOString(), null];
+    }
+    if (preset === 'all') return [null, null];
+    if (preset === 'custom') {
+      const fromVal = $('#apprDateFrom').value;
+      const toVal = $('#apprDateTo').value;
+      const from = fromVal ? startOfDay(new Date(fromVal)).toISOString() : null;
+      const to = toVal ? endOfDay(new Date(toVal)).toISOString() : null;
+      return [from, to];
+    }
+    return [null, null];
+  }
+
+  async function reload(){
+    const wrap = $('#approvalFeed');
+    wrap.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px;">Wczytuję…</p>';
+    try {
+      const preset = $('#apprRangeSelect').value;
+      const [from, to] = computeRange(preset);
+      // Voter filter idzie do RPC tylko dla "me" – inaczej pobieramy wszystko
+      const voterFilter = $('#apprVoterFilter').value;
+      let voterParam = null;
+      if (voterFilter === 'me' && typeof Roles !== 'undefined') {
+        voterParam = Roles.getUsername();
+      }
+      _rows = await fetchRange(from, to, voterParam);
+      renderList();
+    } catch (e) {
+      wrap.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px; color:var(--acc-danger);">Błąd: ' + escapeHtml(e.message) + '</p>';
+    }
+  }
+
+  function onRangeChange(){
+    const preset = $('#apprRangeSelect').value;
+    $('#apprCustomRange').style.display = (preset === 'custom') ? 'flex' : 'none';
+    if (preset !== 'custom') reload();
+    else {
+      const today = new Date();
+      const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+      const iso = (d) => d.toISOString().slice(0, 10);
+      if (!$('#apprDateFrom').value) $('#apprDateFrom').value = iso(weekAgo);
+      if (!$('#apprDateTo').value) $('#apprDateTo').value = iso(today);
+    }
+  }
+
+  async function open(){
+    $('#approvalsModal').classList.add('show');
+    reload();
+  }
+
+  function close(){ $('#approvalsModal').classList.remove('show'); }
+
+  return { open, close, reload, onRangeChange, renderList };
 })();
 
 // ============= AUDIT LOG =============
@@ -7060,6 +7437,7 @@ function init(){
   $('#changelogBtn').onclick = openChangelogModal;
   $('#updatesBtn').onclick = openUpdatesModal;
   $('#aiBtn').onclick = () => AIAssist.open();
+  $('#approvalsBtn').onclick = () => Approvals.open();
   $('#pathBtn').onclick = () => PathView.open();
   $('#groupsBtn').onclick = () => Groups.open();
   $('#invitesBtn').onclick = () => Invites.open();
@@ -7096,6 +7474,7 @@ function init(){
     if (a === 'close-search') PerkSearch.close();
     if (a === 'close-validate') Validate.close();
     if (a === 'close-audit') AuditLog.close();
+    if (a === 'close-approvals') Approvals.close();
     if (a === 'close-diff') SnapshotDiff.close();
   });
   $('#specModal').onclick = (e) => { if (e.target.id === 'specModal') closeSpecModal(); };
@@ -7111,6 +7490,16 @@ function init(){
   $('#auditTypeFilter').addEventListener('change', () => AuditLog.renderList());
   $('#auditDateFrom').addEventListener('change', () => AuditLog.reload());
   $('#auditDateTo').addEventListener('change', () => AuditLog.reload());
+
+  // Approvals modal
+  $('#approvalsModal').onclick = (e) => { if (e.target.id === 'approvalsModal') Approvals.close(); };
+  $('#apprRangeSelect').addEventListener('change', () => Approvals.onRangeChange());
+  $('#apprReloadBtn').onclick = () => Approvals.reload();
+  $('#apprVoteFilter').addEventListener('change', () => Approvals.renderList());
+  $('#apprVoterFilter').addEventListener('change', () => Approvals.reload());
+  $('#apprSearch').addEventListener('input', () => Approvals.renderList());
+  $('#apprDateFrom').addEventListener('change', () => Approvals.reload());
+  $('#apprDateTo').addEventListener('change', () => Approvals.reload());
   $('#diffModal').onclick = (e) => { if (e.target.id === 'diffModal') SnapshotDiff.close(); };
 
   // AI input + tabs
@@ -7178,7 +7567,7 @@ function init(){
     } else if (e.key === 'Escape') {
       if (STATE.ui.connectMode) toggleConnectMode();
       else if (STATE.ui.selectedPerkIds.size > 0) { clearSelection(); renderAll(); }
-      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); AIAssist.close(); Invites.close(); Groups.close(); PathView.close(); PerkSearch.close(); Validate.close(); AuditLog.close(); SnapshotDiff.close(); }
+      else { closeSpecModal(); closeIoModal(); closeChangelogModal(); closeUpdatesModal(); AIAssist.close(); Invites.close(); Groups.close(); PathView.close(); PerkSearch.close(); Validate.close(); AuditLog.close(); Approvals.close(); SnapshotDiff.close(); }
     } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicatePerk();
