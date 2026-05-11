@@ -940,6 +940,121 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.4);
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== Perk hover tooltip ===== */
+  .perk-tooltip {
+    position: fixed;
+    z-index: 9000;
+    max-width: 360px;
+    min-width: 240px;
+    padding: 12px 14px;
+    background: var(--bg-1);
+    border: 1px solid var(--line-3);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+    font-size: 12px;
+    color: var(--text-1);
+    pointer-events: none;
+    line-height: 1.5;
+  }
+  .perk-tooltip-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--line-1);
+  }
+  .perk-tooltip-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-1);
+    flex: 1;
+    min-width: 0;
+  }
+  .perk-tooltip-status {
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+  }
+  .perk-tooltip-status.approved      { background: #6ab07a33; color: #b3deba; }
+  .perk-tooltip-status.rejected      { background: #c7595933; color: #e8a3a3; }
+  .perk-tooltip-status.needs_changes { background: #e8b92333; color: #ecc875; }
+  .perk-tooltip-status.in_review     { background: #78849433; color: #b8c2cf; }
+  .perk-tooltip-status.pending       { background: var(--bg-3);  color: var(--text-3); }
+
+  .perk-tooltip-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-3);
+    margin-bottom: 8px;
+  }
+  .perk-tooltip-desc {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .perk-tooltip-section {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-3);
+    font-weight: 600;
+    padding-top: 8px;
+    margin-top: 4px;
+    margin-bottom: 6px;
+    border-top: 1px solid var(--line-1);
+  }
+  .perk-tooltip-vote {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 6px 8px;
+    align-items: start;
+    padding: 5px 7px;
+    margin-bottom: 3px;
+    background: var(--bg-2);
+    border-left: 3px solid var(--bg-3);
+    border-radius: 3px;
+    font-size: 11.5px;
+  }
+  .perk-tooltip-vote.vote-approve       { border-left-color: #6ab07a; }
+  .perk-tooltip-vote.vote-reject        { border-left-color: #c75959; }
+  .perk-tooltip-vote.vote-needs_changes { border-left-color: #e8b923; }
+  .perk-tooltip-vote.vote-in_review     { border-left-color: #788494; }
+  .perk-tooltip-vote-icon {
+    font-size: 13px;
+    line-height: 1.2;
+  }
+  .perk-tooltip-vote-name {
+    color: var(--text-1);
+    font-weight: 500;
+    word-break: break-word;
+  }
+  .perk-tooltip-vote-time {
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    text-align: right;
+  }
+  .perk-tooltip-vote-comment {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    color: var(--text-2);
+    font-style: italic;
+    padding-top: 2px;
+  }
+  .perk-tooltip-empty {
+    font-size: 11.5px;
+    color: var(--text-3);
+    padding: 6px 0;
+    font-style: italic;
+  }
   .toast.error { border-color: #6b3a3a; color: var(--acc-danger); }
 
   /* ===== Changelog ===== */
@@ -1849,33 +1964,124 @@
   }
 
   /* ===== Audit log ===== */
-  .audit-list { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; }
+  .audit-filters {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 10px; padding: 10px;
+    background: var(--bg-2); border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+  }
+  .audit-filter-row {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .audit-filter-row label {
+    font-size: 11px; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    font-weight: 600; min-width: 50px;
+  }
+  .audit-filter-row select, .audit-filter-row input {
+    padding: 5px 8px;
+    background: var(--bg-1);
+    border: 1px solid var(--line-1);
+    border-radius: 4px;
+    color: var(--text-1);
+    font-size: 12px;
+    font-family: 'Manrope', sans-serif;
+  }
+  .audit-filter-row input[type="date"] { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  #auditCustomRange { display: flex !important; }
+  .audit-list { display: flex; flex-direction: column; gap: 4px; max-height: 56vh; overflow-y: auto; }
   .audit-item {
     display: grid;
-    grid-template-columns: 80px auto 1fr auto;
-    gap: 12px; align-items: center;
-    padding: 8px 12px; background: var(--bg-2);
+    grid-template-columns: 90px auto 1fr auto;
+    gap: 12px; align-items: start;
+    padding: 9px 12px; background: var(--bg-2);
     border: 1px solid var(--line-1); border-radius: var(--radius-sm);
     border-left: 3px solid var(--cat-color, var(--line-2));
     font-size: 12.5px;
   }
+  .audit-item.has-details { cursor: pointer; }
+  .audit-item.has-details:hover { background: var(--bg-3); }
+  .audit-item-row1 {
+    display: contents;
+  }
   .audit-time {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10.5px; color: var(--text-3);
+    padding-top: 2px;
   }
   .audit-op {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px; padding: 2px 6px; border-radius: 3px;
-    font-weight: 700;
+    font-size: 9.5px; padding: 2px 7px; border-radius: 3px;
+    font-weight: 700; align-self: start;
+    margin-top: 1px;
   }
   .audit-op.INSERT { background: rgba(106,176,122,0.18); color: #a3d4ad; }
   .audit-op.UPDATE { background: rgba(170,155,110,0.18); color: var(--acc-points); }
   .audit-op.DELETE { background: rgba(199,89,89,0.18);   color: #e0a8a8; }
-  .audit-summary { color: var(--text-1); }
+  .audit-op.VOTE   { background: rgba(120,132,148,0.22); color: #c9d2dd; }
+  .audit-summary { color: var(--text-1); line-height: 1.45; }
   .audit-actor {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10.5px; color: var(--text-3);
+    align-self: start; padding-top: 2px;
   }
+  .audit-details {
+    grid-column: 2 / -1;
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--bg-1);
+    border: 1px solid var(--line-1);
+    border-radius: 4px;
+    font-size: 11.5px;
+    display: none;
+  }
+  .audit-item.expanded .audit-details { display: block; }
+  .audit-change-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 8px;
+    padding: 3px 0;
+    border-bottom: 1px dashed var(--line-1);
+  }
+  .audit-change-row:last-child { border-bottom: none; }
+  .audit-change-field {
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .audit-change-values { color: var(--text-1); word-break: break-word; }
+  .audit-old {
+    color: var(--text-3);
+    text-decoration: line-through;
+    text-decoration-color: rgba(199,89,89,0.5);
+  }
+  .audit-arrow { color: var(--text-3); margin: 0 6px; }
+  .audit-new { color: #a3d4ad; }
+  .audit-vote-comment {
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: var(--bg-2);
+    border-left: 2px solid var(--text-3);
+    border-radius: 3px;
+    font-style: italic;
+    color: var(--text-2);
+    font-size: 11.5px;
+  }
+  .audit-day-header {
+    padding: 8px 12px;
+    margin: 8px 0 4px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+    background: var(--bg-2);
+    border-radius: 4px;
+  }
+  .audit-day-header:first-child { margin-top: 0; }
 
   /* ===== Diff modal ===== */
   .diff-section {
@@ -2104,6 +2310,9 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- Hover tooltip dla perka – pokazuje opis + listę głosów -->
+  <div class="perk-tooltip" id="perkTooltip" style="display:none;"></div>
+
   <!-- Modal: aktualizacje edytora -->
   <div class="modal-bd" id="updatesModal">
     <div class="modal modal-wide">
@@ -2296,10 +2505,38 @@
   <!-- Modal: audit log -->
   <div class="modal-bd" id="auditModal">
     <div class="modal modal-wide">
-      <h3>Ostatnie zmiany</h3>
-      <p class="help-tip" style="margin-bottom: 12px;">
-        50 ostatnich zmian w bazie. Drag-i perków pomijane (zachowane w snapshotach).
-      </p>
+      <h3>📋 Historia zmian</h3>
+      <div class="audit-filters">
+        <div class="audit-filter-row">
+          <label>Zakres:</label>
+          <select id="auditRangeSelect">
+            <option value="today">Dziś</option>
+            <option value="yesterday">Wczoraj</option>
+            <option value="7d" selected>Ostatnie 7 dni</option>
+            <option value="30d">Ostatnie 30 dni</option>
+            <option value="custom">Niestandardowy zakres…</option>
+            <option value="all">Wszystko (max 1000)</option>
+          </select>
+          <div id="auditCustomRange" style="display:none; gap:6px; align-items:center;">
+            <input type="date" id="auditDateFrom" title="Od">
+            <span style="color:var(--text-3);">–</span>
+            <input type="date" id="auditDateTo" title="Do">
+          </div>
+          <button class="tool-btn" id="auditReloadBtn" title="Odśwież">↻</button>
+        </div>
+        <div class="audit-filter-row">
+          <label>Filtruj:</label>
+          <input type="text" id="auditSearch" placeholder="szukaj po nazwie perka, autorze lub treści…" style="flex:1;">
+          <select id="auditTypeFilter">
+            <option value="all">Wszystkie typy</option>
+            <option value="perks">Edycje perków</option>
+            <option value="perk_votes">Głosy akceptacji</option>
+            <option value="specializations">Drzewka</option>
+            <option value="categories">Kategorie</option>
+          </select>
+        </div>
+        <p class="help-tip" id="auditMeta" style="margin: 6px 0 4px 0;">—</p>
+      </div>
       <div class="audit-list" id="auditList">
         <p class="help-tip" style="text-align:center; padding:20px;">Wczytuję…</p>
       </div>
@@ -3165,6 +3402,8 @@ function renderCanvas(){
 
   edgesLayer.innerHTML = '';
   nodesLayer.innerHTML = '';
+  // Schowaj tooltip – po nowym renderze stare DOM nodes znikają, hover state stale
+  if (typeof PerkTooltip !== 'undefined') PerkTooltip.hide();
 
   if (!spec) {
     empty.style.display = 'grid';
@@ -3379,6 +3618,9 @@ function renderCanvas(){
       if (STATE.ui.dragStart && STATE.ui.dragStart.moved) return;
       onPerkClick(perk.id);
     });
+
+    // Hover tooltip – opis + lista głosów
+    if (typeof PerkTooltip !== 'undefined') PerkTooltip.attach(g, perk.id);
 
     nodesLayer.appendChild(g);
   });
@@ -5144,6 +5386,28 @@ const Snapshots = (() => {
 // pierwszy w panelu i steruje "nieprzeczytaną" kropką.
 const APP_UPDATES = [
   {
+    version: '2.4.0',
+    date: '11.05.2026',
+    items: [
+      'Rozbudowany panel 📋 Historia zmian — filtrowanie po datach: dziś, wczoraj, 7/30 dni, niestandardowy zakres, wszystko #UI',
+      'Wpisy zwracają teraz <b>pełny diff</b> zmiany: które pole, stara wartość → nowa wartość (klik na wpis rozwija szczegóły)',
+      'Głosy akceptacji są logowane do audytu: kto zatwierdził/odrzucił, jaki komentarz, kiedy #UI',
+      'Wpisy pogrupowane po dniach (Dziś / Wczoraj / data)',
+      'Wyszukiwarka po nazwie perka, autorze i treści zmiany + filtr typu (perki / głosy / drzewka / kategorie)',
+      'Wymagana migracja SQL: <code>migration-audit-v2.sql</code> — dodaje kolumnę details + triggery dla głosów #SQL',
+    ],
+  },
+  {
+    version: '2.3.0',
+    date: '06.05.2026',
+    items: [
+      'Nowy hover tooltip nad perkiem na canvasie — najedź myszką żeby zobaczyć opis i listę głosów akceptacji #UI',
+      'Tooltip pokazuje: nazwę, status akceptacji, kategorię i specjalizację, oznaczenia (spec, start, dobry/zły), pełny opis perka',
+      'Pełna lista głosów: kto zagłosował, jaki status nadał, kiedy ("3 dni temu") i komentarz pod głosem (jeśli był)',
+      'Bez zmian SQL ani struktury danych — wykorzystuje istniejący mechanizm głosów',
+    ],
+  },
+  {
     version: '2.2.0',
     date: '05.05.2026',
     items: [
@@ -5662,57 +5926,318 @@ const Validate = (() => {
 // ============= AUDIT LOG =============
 
 const AuditLog = (() => {
-  async function fetchRecent(limit){
+  let _rows = [];
+  let _expandedIds = new Set();
+
+  // ============= Fetch =============
+
+  async function fetchRange(fromIso, toIso, limit){
+    const client = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
+    if (!client) throw new Error('Brak klienta Supabase');
+    // Próbuj nowy RPC (date range), fallback na stary
     try {
-      const sb = window.sb || (window.Sync && Sync.getClient && Sync.getClient());
-      const client = (typeof Sync !== 'undefined' && Sync.getClient) ? Sync.getClient() : null;
-      if (!client) throw new Error('Brak klienta Supabase');
-      const { data, error } = await client.rpc('get_audit_log', { p_limit: limit || 50 });
+      const { data, error } = await client.rpc('get_audit_log_range', {
+        p_from: fromIso, p_to: toIso, p_limit: limit || 1000,
+      });
       if (error) throw new Error(error.message);
       return data || [];
-    } catch (e) {
-      throw e;
+    } catch(e) {
+      // Fallback – jeżeli migracja nie została wgrana
+      console.warn('get_audit_log_range nie dostępne, fallback get_audit_log:', e.message);
+      const { data, error } = await client.rpc('get_audit_log', { p_limit: limit || 200 });
+      if (error) throw new Error(error.message);
+      return data || [];
     }
   }
 
+  // ============= Formatowanie =============
+
   function formatTime(iso){
     const d = new Date(iso);
-    const today = new Date();
-    const sameDay = d.toDateString() === today.toDateString();
     const pad = (n) => String(n).padStart(2, '0');
-    if (sameDay) return pad(d.getHours()) + ':' + pad(d.getMinutes());
-    return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   }
 
-  async function open(){
-    $('#auditModal').classList.add('show');
+  function formatDayHeader(iso){
+    const d = new Date(iso);
+    const today = new Date();
+    const ymd = (x) => x.getFullYear() + '-' + (x.getMonth()+1) + '-' + x.getDate();
+    if (ymd(d) === ymd(today)) return 'Dziś, ' + d.toLocaleDateString('pl-PL', { weekday: 'long', day:'2-digit', month:'2-digit' });
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    if (ymd(d) === ymd(y)) return 'Wczoraj, ' + d.toLocaleDateString('pl-PL', { day:'2-digit', month:'2-digit' });
+    return d.toLocaleDateString('pl-PL', { weekday: 'long', day:'2-digit', month:'2-digit', year:'numeric' });
+  }
+
+  function dayKey(iso){
+    const d = new Date(iso);
+    return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  }
+
+  function shortActor(actor){
+    if (!actor) return '?';
+    const s = String(actor);
+    if (s.includes('@')) return s.split('@')[0];
+    if (s.length > 14) return '…' + s.slice(-6);
+    return s;
+  }
+
+  function fieldLabel(field){
+    const map = {
+      label: 'Nazwa', desc: 'Opis', requiredLevel: 'Poziom wymagany',
+      alignment: 'Charakter', isSpec: 'Spec perk', isStart: 'Punkt startowy',
+      specColor: 'Kolor spec', groupId: 'Grupa', image: 'Obrazek',
+      requiredPerks: 'Wymagania', excludesPerks: 'Wykluczenia',
+      approvalStatus: 'Status akceptacji', color: 'Kolor', description: 'Opis',
+    };
+    return map[field] || field;
+  }
+
+  function fmtValue(val, maxLen){
+    if (val === null || val === undefined || val === '') return '<em style="color:var(--text-3);">—</em>';
+    if (typeof val === 'boolean') return val ? '✓' : '✗';
+    if (typeof val === 'object') {
+      const s = JSON.stringify(val);
+      const lim = maxLen || 80;
+      return '<code style="font-size:10.5px; color:var(--text-2);">' + escapeHtml(s.length > lim ? s.slice(0, lim) + '…' : s) + '</code>';
+    }
+    const s = String(val);
+    const lim = maxLen || 120;
+    return escapeHtml(s.length > lim ? s.slice(0, lim) + '…' : s);
+  }
+
+  function alignmentLabel(v){
+    if (v === 'good') return 'Dobry';
+    if (v === 'evil') return 'Zły';
+    return 'Neutralny';
+  }
+
+  function fmtSpecialValue(field, val){
+    if (val == null) return '<em style="color:var(--text-3);">—</em>';
+    if (field === 'alignment') return escapeHtml(alignmentLabel(val));
+    if (field === 'approvalStatus') {
+      const m = { approved:'Zatwierdzony', rejected:'Odrzucony', needs_changes:'Wymaga zmian', in_review:'W trakcie', pending:'Oczekujący' };
+      return escapeHtml(m[val] || val);
+    }
+    if (field === 'isSpec' || field === 'isStart') return val ? '✓ tak' : '✗ nie';
+    return fmtValue(val);
+  }
+
+  // ============= Render =============
+
+  function buildDetailsHtml(row){
+    const d = row.details || {};
+    if (!d || typeof d !== 'object') return '';
+    const kind = d.kind;
+
+    // INSERT / DELETE perka – pokaż pola perka
+    if ((kind === 'insert' || kind === 'delete') && row.table_name === 'perks') {
+      const parts = [];
+      if (d.label) parts.push(['Nazwa', d.label]);
+      if (d.desc) parts.push(['Opis', d.desc]);
+      if (d.requiredLevel) parts.push(['Poziom', d.requiredLevel]);
+      if (d.alignment && d.alignment !== 'neutral') parts.push(['Charakter', alignmentLabel(d.alignment)]);
+      if (d.isSpec) parts.push(['Spec', '✓ tak']);
+      if (d.isStart) parts.push(['Start', '✓ tak']);
+      if (parts.length === 0) return '';
+      return parts.map(([k, v]) =>
+        '<div class="audit-change-row">' +
+          '<span class="audit-change-field">' + escapeHtml(k) + '</span>' +
+          '<span class="audit-change-values">' + fmtValue(v) + '</span>' +
+        '</div>'
+      ).join('');
+    }
+
+    // UPDATE – pokaż listę zmian
+    if (kind === 'update') {
+      const changes = d.changes || [];
+      if (!Array.isArray(changes) || changes.length === 0) return '';
+      return changes.map(ch =>
+        '<div class="audit-change-row">' +
+          '<span class="audit-change-field">' + escapeHtml(fieldLabel(ch.field)) + '</span>' +
+          '<span class="audit-change-values">' +
+            '<span class="audit-old">' + fmtSpecialValue(ch.field, ch.old) + '</span>' +
+            '<span class="audit-arrow">→</span>' +
+            '<span class="audit-new">' + fmtSpecialValue(ch.field, ch.new) + '</span>' +
+          '</span>' +
+        '</div>'
+      ).join('');
+    }
+
+    // Głos – pokaż komentarz + ewentualnie poprzedni głos
+    if (kind === 'vote_cast' || kind === 'vote_update' || kind === 'vote_remove') {
+      let html = '';
+      if (kind === 'vote_update' && d.oldVote && d.oldVote !== d.vote) {
+        html += '<div class="audit-change-row">' +
+          '<span class="audit-change-field">Poprzedni głos</span>' +
+          '<span class="audit-change-values"><span class="audit-old">' + escapeHtml(d.oldVote) + '</span></span>' +
+        '</div>';
+      }
+      if (d.comment) {
+        html += '<div class="audit-vote-comment">„' + escapeHtml(d.comment) + '"</div>';
+      } else if (kind !== 'vote_remove') {
+        html += '<div class="audit-change-row"><span class="audit-change-field">Komentarz</span><span class="audit-change-values"><em style="color:var(--text-3);">— brak —</em></span></div>';
+      }
+      if (d.voter) {
+        html += '<div class="audit-change-row">' +
+          '<span class="audit-change-field">Głosujący</span>' +
+          '<span class="audit-change-values">' + escapeHtml(d.voter) + '</span>' +
+        '</div>';
+      }
+      return html;
+    }
+
+    return '';
+  }
+
+  function renderRow(row){
+    const cat = CATEGORIES.find(c => c.id === row.category_id);
+    const accent = cat ? cat.accent : 'var(--line-2)';
+    const isVote = row.table_name === 'perk_votes';
+    const opLabel = isVote ? 'VOTE' : row.operation;
+    const detailsHtml = buildDetailsHtml(row);
+    const hasDetails = detailsHtml.length > 0;
+    const expanded = _expandedIds.has(row.id);
+
+    return '<div class="audit-item ' + (hasDetails ? 'has-details' : '') + (expanded ? ' expanded' : '') + '"' +
+        ' data-audit-id="' + row.id + '"' +
+        ' style="--cat-color:' + escapeHtml(accent) + ';">' +
+      '<span class="audit-time">' + escapeHtml(formatTime(row.created_at)) + '</span>' +
+      '<span class="audit-op ' + opLabel + '">' + opLabel + '</span>' +
+      '<span class="audit-summary">' + escapeHtml(row.summary || '') + '</span>' +
+      '<span class="audit-actor" title="' + escapeHtml(row.actor || '') + '">' + escapeHtml(shortActor(row.actor)) + '</span>' +
+      (hasDetails ? '<div class="audit-details">' + detailsHtml + '</div>' : '') +
+    '</div>';
+  }
+
+  function applyFilters(rows){
+    const search = ($('#auditSearch').value || '').toLowerCase().trim();
+    const typeFilter = $('#auditTypeFilter').value;
+    return rows.filter(r => {
+      if (typeFilter !== 'all' && r.table_name !== typeFilter) return false;
+      if (!search) return true;
+      const hay = (r.summary || '') + ' ' + (r.actor || '') + ' ' + JSON.stringify(r.details || {});
+      return hay.toLowerCase().includes(search);
+    });
+  }
+
+  function renderList(){
+    const list = $('#auditList');
+    const meta = $('#auditMeta');
+    const filtered = applyFilters(_rows);
+    meta.textContent = filtered.length + ' wpisów' + (filtered.length !== _rows.length ? ' (z ' + _rows.length + ' łącznie)' : '');
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px;">' +
+        (_rows.length === 0 ? 'Brak zmian w wybranym zakresie.' : 'Brak wpisów pasujących do filtrów.') +
+        '</p>';
+      return;
+    }
+
+    // Grupuj po dniu
+    let lastDay = null;
+    const html = [];
+    for (const row of filtered) {
+      const day = dayKey(row.created_at);
+      if (day !== lastDay) {
+        html.push('<div class="audit-day-header">' + escapeHtml(formatDayHeader(row.created_at)) + '</div>');
+        lastDay = day;
+      }
+      html.push(renderRow(row));
+    }
+    list.innerHTML = html.join('');
+
+    // Klik na item z details = expand/collapse
+    list.querySelectorAll('.audit-item.has-details').forEach(el => {
+      el.onclick = () => {
+        const id = parseInt(el.dataset.auditId);
+        if (_expandedIds.has(id)) _expandedIds.delete(id);
+        else _expandedIds.add(id);
+        el.classList.toggle('expanded');
+      };
+    });
+  }
+
+  // ============= Date range computation =============
+
+  function computeRange(preset){
+    const now = new Date();
+    const startOfDay = (d) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    };
+    const endOfDay = (d) => {
+      const x = new Date(d);
+      x.setHours(23, 59, 59, 999);
+      return x;
+    };
+
+    if (preset === 'today') {
+      return [startOfDay(now).toISOString(), null];
+    }
+    if (preset === 'yesterday') {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      return [startOfDay(y).toISOString(), startOfDay(now).toISOString()];
+    }
+    if (preset === '7d') {
+      const x = new Date(now);
+      x.setDate(x.getDate() - 7);
+      return [startOfDay(x).toISOString(), null];
+    }
+    if (preset === '30d') {
+      const x = new Date(now);
+      x.setDate(x.getDate() - 30);
+      return [startOfDay(x).toISOString(), null];
+    }
+    if (preset === 'all') return [null, null];
+    if (preset === 'custom') {
+      const fromVal = $('#auditDateFrom').value;
+      const toVal = $('#auditDateTo').value;
+      const from = fromVal ? startOfDay(new Date(fromVal)).toISOString() : null;
+      const to = toVal ? new Date(endOfDay(new Date(toVal))).toISOString() : null;
+      return [from, to];
+    }
+    return [null, null];
+  }
+
+  async function reload(){
     const list = $('#auditList');
     list.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px;">Wczytuję…</p>';
+    _expandedIds.clear();
     try {
-      const rows = await fetchRecent(50);
-      if (!rows || rows.length === 0) {
-        list.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px;">Brak wpisów. Zacznij coś edytować ;)</p>';
-        return;
-      }
-      list.innerHTML = rows.map(r => {
-        const cat = CATEGORIES.find(c => c.id === r.category_id);
-        const accent = cat ? cat.accent : 'var(--line-2)';
-        const actor = r.actor ? r.actor.slice(-6) : '?';
-        return '<div class="audit-item" style="--cat-color:' + escapeHtml(accent) + ';">' +
-          '<span class="audit-time">' + escapeHtml(formatTime(r.created_at)) + '</span>' +
-          '<span class="audit-op ' + r.operation + '">' + r.operation + '</span>' +
-          '<span class="audit-summary">' + escapeHtml(r.summary || '') + '</span>' +
-          '<span class="audit-actor" title="Pełny ID klienta: ' + escapeHtml(r.actor || '') + '">…' + escapeHtml(actor) + '</span>' +
-        '</div>';
-      }).join('');
+      const preset = $('#auditRangeSelect').value;
+      const [from, to] = computeRange(preset);
+      _rows = await fetchRange(from, to, 1000);
+      renderList();
     } catch (e) {
       list.innerHTML = '<p class="help-tip" style="text-align:center; padding:20px; color:var(--acc-danger);">Błąd: ' + escapeHtml(e.message) + '</p>';
     }
   }
 
+  function onRangeChange(){
+    const preset = $('#auditRangeSelect').value;
+    $('#auditCustomRange').style.display = (preset === 'custom') ? 'flex' : 'none';
+    if (preset !== 'custom') reload();
+    else {
+      // Ustaw domyślne daty: 7 dni wstecz → dziś
+      const today = new Date();
+      const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+      const iso = (d) => d.toISOString().slice(0, 10);
+      if (!$('#auditDateFrom').value) $('#auditDateFrom').value = iso(weekAgo);
+      if (!$('#auditDateTo').value) $('#auditDateTo').value = iso(today);
+    }
+  }
+
+  async function open(){
+    $('#auditModal').classList.add('show');
+    reload();
+  }
+
   function close(){ $('#auditModal').classList.remove('show'); }
 
-  return { open, close };
+  // Eksport tych metod, których panel HTML potrzebuje przez data-action
+  return { open, close, reload, onRangeChange, renderList };
 })();
 
 // ============= DIFF SNAPSHOTS =============
@@ -5974,7 +6499,12 @@ const Voting = (() => {
     });
   }
 
-  return { refreshFor, cast, remove, renderList, currentUserId };
+  // Synchroniczny dostęp do cachu (do tooltipów)
+  function getCached(catId, specId, perkId){
+    return cache[cacheKey(catId, specId, perkId)] || null;
+  }
+
+  return { refreshFor, cast, remove, renderList, currentUserId, getCached };
 })();
 
 // ============= AI ASYSTENT =============
@@ -6575,6 +7105,12 @@ function init(){
   $('#searchModal').onclick = (e) => { if (e.target.id === 'searchModal') PerkSearch.close(); };
   $('#validateModal').onclick = (e) => { if (e.target.id === 'validateModal') Validate.close(); };
   $('#auditModal').onclick = (e) => { if (e.target.id === 'auditModal') AuditLog.close(); };
+  $('#auditRangeSelect').addEventListener('change', () => AuditLog.onRangeChange());
+  $('#auditReloadBtn').onclick = () => AuditLog.reload();
+  $('#auditSearch').addEventListener('input', () => AuditLog.renderList());
+  $('#auditTypeFilter').addEventListener('change', () => AuditLog.renderList());
+  $('#auditDateFrom').addEventListener('change', () => AuditLog.reload());
+  $('#auditDateTo').addEventListener('change', () => AuditLog.reload());
   $('#diffModal').onclick = (e) => { if (e.target.id === 'diffModal') SnapshotDiff.close(); };
 
   // AI input + tabs
@@ -6922,6 +7458,203 @@ async function checkAuth(){
     $('#authError').classList.add('show');
   }
 }
+
+// ============= PERK HOVER TOOLTIP =============
+// Pokazuje opis + listę głosów akceptacji po najechaniu na perk.
+// Głosy ładowane lazy z bazy + cache w module Voting.
+
+const PerkTooltip = (() => {
+  let _el = null;
+  let _hideTimer = null;
+  let _showTimer = null;
+  let _lastPerkKey = null;
+
+  function el(){
+    if (!_el) _el = document.getElementById('perkTooltip');
+    return _el;
+  }
+
+  function statusLabel(status){
+    if (status === 'approved') return 'Zatwierdzony';
+    if (status === 'rejected') return 'Odrzucony';
+    if (status === 'needs_changes') return 'Wymaga zmian';
+    if (status === 'in_review') return 'W trakcie';
+    return 'Oczekujący';
+  }
+
+  function voteIcon(vote){
+    if (vote === 'approve') return '✓';
+    if (vote === 'reject') return '✗';
+    if (vote === 'needs_changes') return '⚠';
+    if (vote === 'in_review') return '◐';
+    return '·';
+  }
+
+  function voteLabel(vote){
+    if (vote === 'approve') return 'Zatwierdza';
+    if (vote === 'reject') return 'Odrzuca';
+    if (vote === 'needs_changes') return 'Wymaga zmian';
+    if (vote === 'in_review') return 'Recenzuje';
+    return vote || '?';
+  }
+
+  function formatTime(iso){
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const now = new Date();
+      const diffMs = now - d;
+      const diffH = diffMs / (1000 * 60 * 60);
+      if (diffH < 1) {
+        const m = Math.floor(diffMs / (1000 * 60));
+        return m <= 0 ? 'teraz' : (m + ' min temu');
+      }
+      if (diffH < 24) return Math.floor(diffH) + 'h temu';
+      const diffDays = Math.floor(diffH / 24);
+      if (diffDays < 7) return diffDays + ' dni temu';
+      return d.toLocaleDateString('pl-PL', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    } catch(e) { return ''; }
+  }
+
+  function shortVoter(voter){
+    if (!voter) return '?';
+    const s = String(voter);
+    // Jeżeli email – tylko część przed @
+    if (s.includes('@')) return s.split('@')[0];
+    // Jeżeli długi UUID (CLIENT_ID), pokaż krótko
+    if (s.length > 20) return s.slice(0, 8) + '…';
+    return s;
+  }
+
+  function buildHtml(perk, votes, ctx){
+    const status = perk.approvalStatus || 'pending';
+    const desc = (perk.levels && perk.levels[0] && perk.levels[0].desc) || '';
+    const meta = [];
+    if (ctx.catName) meta.push(escapeHtml(ctx.catName));
+    if (ctx.specLabel) meta.push(escapeHtml(ctx.specLabel));
+    meta.push('L' + (perk.requiredLevel || 1));
+    if (perk.isSpec) meta.push('★ specjalizacja');
+    if (perk.isStart) meta.push('🛤 START');
+    if (perk.alignment === 'good') meta.push('Dobry');
+    else if (perk.alignment === 'evil') meta.push('Zły');
+
+    let html = '<div class="perk-tooltip-head">' +
+      '<span class="perk-tooltip-name">' + escapeHtml(perk.label || perk.id) + '</span>' +
+      '<span class="perk-tooltip-status ' + status + '">' + escapeHtml(statusLabel(status)) + '</span>' +
+    '</div>';
+
+    html += '<div class="perk-tooltip-meta">' + meta.join(' · ') + '</div>';
+
+    if (desc) {
+      html += '<div class="perk-tooltip-desc">' + escapeHtml(desc) + '</div>';
+    } else {
+      html += '<div class="perk-tooltip-desc" style="color:var(--text-3); font-style:italic;">— brak opisu —</div>';
+    }
+
+    html += '<div class="perk-tooltip-section">Głosy akceptacji</div>';
+    if (votes === null) {
+      html += '<div class="perk-tooltip-empty">Wczytuję głosy…</div>';
+    } else if (votes.length === 0) {
+      html += '<div class="perk-tooltip-empty">Brak głosów. Zagłosuj w panelu po prawej stronie.</div>';
+    } else {
+      html += votes.map(v => {
+        const cmt = v.comment ? '<div class="perk-tooltip-vote-comment">„' + escapeHtml(v.comment) + '"</div>' : '';
+        return '<div class="perk-tooltip-vote vote-' + (v.vote || 'pending') + '">' +
+            '<span class="perk-tooltip-vote-icon">' + voteIcon(v.vote) + '</span>' +
+            '<span class="perk-tooltip-vote-name">' + escapeHtml(shortVoter(v.voter)) + ' — ' + escapeHtml(voteLabel(v.vote)) + '</span>' +
+            '<span class="perk-tooltip-vote-time">' + escapeHtml(formatTime(v.created_at)) + '</span>' +
+            cmt +
+          '</div>';
+      }).join('');
+    }
+    return html;
+  }
+
+  function position(mouseX, mouseY){
+    const t = el();
+    if (!t) return;
+    const margin = 16;
+    const rect = t.getBoundingClientRect();
+    const w = rect.width || 320;
+    const h = rect.height || 200;
+    let x = mouseX + 18;
+    let y = mouseY + 18;
+    if (x + w + margin > window.innerWidth) x = mouseX - w - 18;
+    if (y + h + margin > window.innerHeight) y = mouseY - h - 18;
+    if (x < margin) x = margin;
+    if (y < margin) y = margin;
+    t.style.left = x + 'px';
+    t.style.top = y + 'px';
+  }
+
+  function show(perkId, mouseX, mouseY){
+    const t = el();
+    if (!t) return;
+    const catId = STATE.ui.activeCategory;
+    const specId = STATE.ui.activeSpecId;
+    const cat = STATE.data.types[catId];
+    const spec = cat && cat.specializations[specId];
+    const perk = spec && spec.perks[perkId];
+    if (!perk) return;
+
+    const ctx = {
+      catName: cat ? cat.name : '',
+      specLabel: spec.label || specId,
+    };
+
+    const key = catId + '|' + specId + '|' + perkId;
+    _lastPerkKey = key;
+
+    // Najpierw spróbuj z cachu (synchronicznie)
+    let votes = null;
+    if (typeof Voting !== 'undefined' && Voting.getCached) {
+      votes = Voting.getCached(catId, specId, perkId);
+    }
+    t.innerHTML = buildHtml(perk, votes, ctx);
+    t.style.display = 'block';
+    position(mouseX, mouseY);
+
+    // W tle pobierz świeże głosy (nawet jeśli cache był) – szybkie odświeżenie
+    if (typeof Voting !== 'undefined' && Voting.refreshFor) {
+      Voting.refreshFor(perk).then(fresh => {
+        // Tylko jeśli tooltip jeszcze pokazuje TEN perk
+        if (_lastPerkKey !== key) return;
+        if (t.style.display === 'none') return;
+        t.innerHTML = buildHtml(perk, fresh, ctx);
+      }).catch(() => {});
+    }
+  }
+
+  function hide(){
+    const t = el();
+    if (!t) return;
+    t.style.display = 'none';
+    _lastPerkKey = null;
+  }
+
+  function attach(g, perkId){
+    g.addEventListener('mouseenter', (e) => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+      if (_showTimer) clearTimeout(_showTimer);
+      _showTimer = setTimeout(() => {
+        show(perkId, e.clientX, e.clientY);
+      }, 320);
+    });
+    g.addEventListener('mousemove', (e) => {
+      // Odśwież pozycję jeśli tooltip widoczny
+      const t = el();
+      if (t && t.style.display !== 'none' && _lastPerkKey && _lastPerkKey.endsWith('|' + perkId)) {
+        position(e.clientX, e.clientY);
+      }
+    });
+    g.addEventListener('mouseleave', () => {
+      if (_showTimer) { clearTimeout(_showTimer); _showTimer = null; }
+      _hideTimer = setTimeout(() => hide(), 100);
+    });
+  }
+
+  return { attach, show, hide };
+})();
 
 // ============= PATHVIEW (liniowe ścieżki rozwoju) =============
 
