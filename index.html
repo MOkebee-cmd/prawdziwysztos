@@ -853,6 +853,22 @@
     gap: 6px;
     margin-top: 4px;
   }
+  .perk-search-input {
+    padding: 6px 9px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-sm);
+    color: var(--text-1);
+    font-size: 12px;
+    font-family: 'Manrope', sans-serif;
+    min-width: 0;
+  }
+  .perk-search-input:focus {
+    border-color: var(--acc-points);
+    outline: none;
+    background: var(--bg-1);
+  }
+  .perk-search-input::placeholder { color: var(--text-3); }
   .icon-x {
     background: transparent;
     border: 1px solid var(--line-2);
@@ -3856,8 +3872,9 @@ function renderInspector(){
   }
 
   const otherPerks = Object.values(spec.perks).filter(p => p.id !== perk.id);
+  // Opcje do datalist – wpisywanie nazwy filtruje listę natywnie
   const reqOptions = otherPerks.map(p =>
-    '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.label || p.id) + '</option>'
+    '<option value="' + escapeHtml(p.label || p.id) + '"></option>'
   ).join('');
 
   if (!perk.levels || !perk.levels[0]) perk.levels = [{ desc: '' }];
@@ -3945,7 +3962,8 @@ function renderInspector(){
   html += '</div>';
   if (otherPerks.length > 0) {
     html += '<div class="req-add-row">' +
-      '<select id="reqAddSel" style="flex:1;"><option value="">+ Dodaj wymaganie…</option>' + reqOptions + '</select>' +
+      '<input id="reqAddSel" class="perk-search-input" list="reqAddList" placeholder="🔍 wpisz nazwę perka…" autocomplete="off" style="flex:1;">' +
+      '<datalist id="reqAddList">' + reqOptions + '</datalist>' +
       '<button class="icon-btn-sm" id="reqAddBtn" title="Dodaj">+</button>' +
     '</div>';
   } else {
@@ -3967,13 +3985,14 @@ function renderInspector(){
   html += '</div>';
   // Lista perków do dodania (bez tych już wykluczonych i bez samego siebie)
   const exclSet = new Set(perk.excludesPerks || []);
-  const exclOptions = otherPerks
-    .filter(p => !exclSet.has(p.id))
-    .map(p => '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.label || p.id) + '</option>')
+  const exclAvail = otherPerks.filter(p => !exclSet.has(p.id));
+  const exclOptions = exclAvail
+    .map(p => '<option value="' + escapeHtml(p.label || p.id) + '"></option>')
     .join('');
-  if (otherPerks.filter(p => !exclSet.has(p.id)).length > 0) {
+  if (exclAvail.length > 0) {
     html += '<div class="req-add-row">' +
-      '<select id="exclAddSel" style="flex:1;"><option value="">+ Dodaj wykluczenie…</option>' + exclOptions + '</select>' +
+      '<input id="exclAddSel" class="perk-search-input" list="exclAddList" placeholder="🔍 wpisz nazwę perka…" autocomplete="off" style="flex:1;">' +
+      '<datalist id="exclAddList">' + exclOptions + '</datalist>' +
       '<button class="icon-btn-sm" id="exclAddBtn" title="Dodaj">+</button>' +
     '</div>';
   }
@@ -4125,17 +4144,39 @@ function renderInspector(){
       syncCurrentPerk();
     };
   });
+  // Helper: znajdź perk po nazwie (label) lub ID w obrębie spec
+  function resolvePerkByText(text){
+    if (!text) return null;
+    const t = text.trim().toLowerCase();
+    // Najpierw dokładne dopasowanie ID
+    if (spec.perks[text.trim()]) return spec.perks[text.trim()];
+    // Potem dokładne dopasowanie label
+    let found = otherPerks.find(p => (p.label || '').toLowerCase() === t);
+    if (found) return found;
+    // Częściowe dopasowanie (jeśli jednoznaczne)
+    const matches = otherPerks.filter(p => (p.label || '').toLowerCase().includes(t) || p.id.toLowerCase().includes(t));
+    if (matches.length === 1) return matches[0];
+    return null;
+  }
+
   const reqAddBtn = inspector.querySelector('#reqAddBtn');
-  if (reqAddBtn) {
-    reqAddBtn.onclick = () => {
-      const sel = inspector.querySelector('#reqAddSel').value;
-      if (!sel) return;
+  const reqAddInput = inspector.querySelector('#reqAddSel');
+  if (reqAddBtn && reqAddInput) {
+    const doAddReq = () => {
+      const target = resolvePerkByText(reqAddInput.value);
+      if (!target) { showToast('Nie znaleziono perka o tej nazwie', 'error'); return; }
+      const sel = target.id;
       if (createsCycle(spec, perk.id, sel)) { showToast('Cykl niedozwolony', 'error'); return; }
       if (!perk.requiredPerks) perk.requiredPerks = {};
       perk.requiredPerks[sel] = reqMakeValue(true, true);
+      reqAddInput.value = '';
       renderAll();
       syncCurrentPerk();
     };
+    reqAddBtn.onclick = doAddReq;
+    reqAddInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); doAddReq(); }
+    });
   }
 
   inspector.querySelectorAll('[data-eff-val]').forEach(inp => {
@@ -4297,11 +4338,12 @@ function renderInspector(){
 
   // ===== Wykluczanie: handler dodawania =====
   const exclAddBtn = inspector.querySelector('#exclAddBtn');
-  if (exclAddBtn) {
-    exclAddBtn.onclick = () => {
-      const sel = inspector.querySelector('#exclAddSel');
-      const otherId = sel.value;
-      if (!otherId) return;
+  const exclAddInput = inspector.querySelector('#exclAddSel');
+  if (exclAddBtn && exclAddInput) {
+    const doAddExcl = () => {
+      const target = resolvePerkByText(exclAddInput.value);
+      if (!target) { showToast('Nie znaleziono perka o tej nazwie', 'error'); return; }
+      const otherId = target.id;
       const otherPerk = spec.perks[otherId];
       if (!otherPerk) return;
       // Symetryczne: dodaj w obu kierunkach
@@ -4309,10 +4351,15 @@ function renderInspector(){
       otherPerk.excludesPerks = otherPerk.excludesPerks || [];
       if (!perk.excludesPerks.includes(otherId)) perk.excludesPerks.push(otherId);
       if (!otherPerk.excludesPerks.includes(perk.id)) otherPerk.excludesPerks.push(perk.id);
+      exclAddInput.value = '';
       syncPerk(STATE.ui.activeCategory, STATE.ui.activeSpecId, otherPerk);
       syncCurrentPerk();
       renderAll();
     };
+    exclAddBtn.onclick = doAddExcl;
+    exclAddInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); doAddExcl(); }
+    });
   }
 
   // ===== Voting =====
@@ -5545,6 +5592,14 @@ const Snapshots = (() => {
 // auto-stylowane na końcu wpisu. Najnowszy wpis pierwszy = pojawia się jako
 // pierwszy w panelu i steruje "nieprzeczytaną" kropką.
 const APP_UPDATES = [
+  {
+    version: '2.5.1',
+    date: '11.05.2026',
+    items: [
+      'Dodawanie wymaganych perków i wykluczeń ma teraz wyszukiwarkę — wpisz nazwę zamiast przewijać listę 199 perków #UI',
+      'Pole akceptuje wpisywanie z podpowiedziami (datalist), Enter dodaje, częściowa nazwa też działa jeśli jednoznaczna',
+    ],
+  },
   {
     version: '2.5.0',
     date: '11.05.2026',
