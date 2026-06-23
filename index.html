@@ -5074,6 +5074,9 @@ function buildExportData(){
         perkCopy.isStart = perk.isStart === true;
         // Normalizuj requiredPerks do nowego formatu
         perkCopy.requiredPerks = normalizeRequiredPerks(perk.requiredPerks);
+        // Usuń pola wewnętrzne edytora (recenzja) – nie trafiają do produkcyjnego JSONa
+        delete perkCopy.approvalStatus;
+        delete perkCopy.approvalSummary;
         specOut.perks[pid] = perkCopy;
         // Jeżeli ma grupę – wstaw też do grupy (z order)
         if (perk.groupId && out.perkGroups[perk.groupId]) {
