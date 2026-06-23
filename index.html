@@ -5020,6 +5020,29 @@ const PerkOrder = (() => {
   return { computeForSpec, computeAll, listForGroup, listForSpec, tracePathsForSpec, tracePathsForGroup };
 })();
 
+// Usuwa pola wewnętrzne edytora (recenzja) z dowolnej struktury {types, perkGroups}.
+// Działa in-place na kopii — zwraca tę samą referencję dla wygody.
+function stripInternalPerkFields(data){
+  if (!data || typeof data !== 'object') return data;
+  const cleanPerk = (perk) => {
+    if (perk && typeof perk === 'object') {
+      delete perk.approvalStatus;
+      delete perk.approvalSummary;
+    }
+  };
+  // types -> specializations -> perks
+  for (const cat of Object.values(data.types || {})) {
+    for (const spec of Object.values((cat && cat.specializations) || {})) {
+      for (const perk of Object.values((spec && spec.perks) || {})) cleanPerk(perk);
+    }
+  }
+  // perkGroups -> perks
+  for (const grp of Object.values(data.perkGroups || {})) {
+    for (const perk of Object.values((grp && grp.perks) || {})) cleanPerk(perk);
+  }
+  return data;
+}
+
 function buildExportData(){
   const out = {
     types: {},
@@ -5100,6 +5123,9 @@ function buildExportData(){
     for (const k of sortedKeys) sorted[k] = grp.perks[k];
     grp.perks = sorted;
   }
+
+  // Zabezpieczenie: usuń pola recenzji ze wszystkich perków (types + perkGroups)
+  stripInternalPerkFields(out);
 
   return out;
 }
@@ -7360,7 +7386,8 @@ async function refreshChangelogList(){
       try {
         const snap = await Snapshots.load(id);
         if (!snap || !snap.data) throw new Error('Snapshot pusty');
-        const json = JSON.stringify(snap.data, null, 2);
+        const cleaned = stripInternalPerkFields(JSON.parse(JSON.stringify(snap.data)));
+        const json = JSON.stringify(cleaned, null, 2);
         const dt = new Date(snap.created_at);
         const pad = (n) => String(n).padStart(2, '0');
         const stamp = dt.getFullYear() + pad(dt.getMonth()+1) + pad(dt.getDate()) + '_' + pad(dt.getHours()) + pad(dt.getMinutes());
